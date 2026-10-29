@@ -18,6 +18,11 @@ type CartItem = {
   quantity: number;
 };
 
+type Coordinates = {
+  latitude: number;
+  longitude: number;
+};
+
 const pages = {
   "About Us": {
     subtitle: "Food shopping, made convenient.",
@@ -30,22 +35,22 @@ const pages = {
   "How It Works": {
     subtitle: "From browsing to delivery.",
     body: [
-      "1. Browse the marketplace. Explore ready-made meals and farm products together, or filter by category.",
-      "2. Add your products. Choose quantities and review your cart.",
-      "3. Confirm your location. GoBiz checks whether your destination falls within our current delivery radius.",
-      "4. Enter your details. Provide your name, phone number, email and delivery address, including your building or house number and floor where applicable.",
-      "5. Receive your order. Payment is made on delivery. Available delivery fees are calculated at checkout.",
+      "1. Browse the marketplace and explore meals or farm products.",
+      "2. Add products to your cart and review your quantities.",
+      "3. Share your GPS location so GoBiz can verify delivery availability.",
+      "4. Enter your name, phone number, email and delivery address.",
+      "5. Confirm your order and pay on delivery.",
     ],
   },
   FAQ: {
     subtitle: "Frequently asked questions.",
     body: [
-      "Do I have to share my location? No, not to browse. However, you must share your location before placing an order so we can check delivery availability.",
-      "How do I pay? GoBiz initially supports payment on delivery. Online payments are not available in this version.",
-      "Can I order farm products and meals together? Yes. Both categories appear in the same marketplace by default.",
-      "What if GoBiz does not deliver to my area? We will let you know that your destination is outside our current service area. We hope to expand coverage in the future.",
-      "How are delivery fees calculated? Fees will be determined by GoBiz's configured delivery policy. The applicable fee will be shown before an order is confirmed.",
-      "How can I leave a review or complaint? Use the Feedback button on the left side of the page to submit a complaint or suggestion.",
+      "Do I have to share my location? Not to browse. A valid location within the delivery radius is required before ordering.",
+      "How do I pay? GoBiz currently supports payment on delivery.",
+      "Can I order farm products and meals together? Yes, add both to the same cart.",
+      "What if my area is outside the delivery radius? You will not be able to place a delivery order from outside the current service area.",
+      "How are delivery fees calculated? The applicable delivery fee is shown during checkout.",
+      "How can I leave a review or complaint? Use the Feedback button on the left side of the page.",
     ],
   },
   "Our Services": {
@@ -53,9 +58,9 @@ const pages = {
     body: [
       "Ready-made meals: Discover prepared meals offered by participating food sellers.",
       "Farm products: Shop fresh produce and other available farm products.",
-      "Convenient delivery: Request delivery to a destination within the active GoBiz service radius.",
+      "Convenient delivery: Request delivery within the active GoBiz service radius.",
       "Customer feedback: Share your experience and raise concerns through our feedback form.",
-      "Our catalogue, prices and delivery availability will depend on the products and services currently listed on GoBiz.",
+      "Our catalogue, prices and delivery availability depend on the products and services currently listed on GoBiz.",
     ],
   },
   "Contact Us": {
@@ -64,7 +69,7 @@ const pages = {
       "Have a question about our products, delivery coverage or services? Contact the GoBiz team.",
       "WhatsApp: +254 757 699959",
       "Email: 254gobiz@gmail.com",
-      "For faster assistance, include your order number when contacting us about an existing order.",
+      "For assistance with an existing order, include your order number.",
     ],
   },
 };
@@ -77,31 +82,40 @@ const mealImage =
 const farmImage =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=85";
 
+const CART_STORAGE_KEY = "gobiz-cart";
+const LOCATION_STORAGE_KEY = "gobiz-location";
+
 function formatPrice(price: number) {
   return `KSh ${price.toLocaleString("en-KE")}`;
 }
 
 export default function Home() {
   const [intro, setIntro] = useState(true);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
 
   const [category, setCategory] = useState("ALL");
   const [search, setSearch] = useState("");
+
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [infoPage, setInfoPage] = useState<PageName | null>(null);
 
   const [locationOpen, setLocationOpen] = useState(false);
-  const [location, setLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [location, setLocation] = useState<Coordinates | null>(null);
   const [locationMessage, setLocationMessage] = useState("");
   const [checkingLocation, setCheckingLocation] = useState(false);
 
+  const [addedProduct, setAddedProduct] = useState("");
+  const [addedNotice, setAddedNotice] = useState(false);
+
+  // Keep the initial intro and location prompt.
+  // Customers may dismiss the prompt and browse without sharing.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setIntro(false);
@@ -111,6 +125,65 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // Restore the cart between homepage and checkout navigation.
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+
+      if (savedCart) {
+        const parsed: unknown = JSON.parse(savedCart);
+
+        if (Array.isArray(parsed)) {
+          setCart(
+            parsed.filter(
+              (item): item is CartItem =>
+                item !== null &&
+                typeof item === "object" &&
+                "product" in item &&
+                "quantity" in item &&
+                typeof item.quantity === "number" &&
+                item.quantity > 0 &&
+                item.product !== null &&
+                typeof item.product === "object"
+            )
+          );
+        }
+      }
+
+      const savedLocation = localStorage.getItem(LOCATION_STORAGE_KEY);
+
+      if (savedLocation) {
+        const parsed: unknown = JSON.parse(savedLocation);
+
+        if (
+          parsed !== null &&
+          typeof parsed === "object" &&
+          "latitude" in parsed &&
+          "longitude" in parsed &&
+          typeof parsed.latitude === "number" &&
+          typeof parsed.longitude === "number"
+        ) {
+          setLocation({
+            latitude: parsed.latitude,
+            longitude: parsed.longitude,
+          });
+        }
+      }
+    } catch {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      localStorage.removeItem(LOCATION_STORAGE_KEY);
+    } finally {
+      setCartHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (cartHydrated) {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    }
+  }, [cart, cartHydrated]);
+
+  // Load real products from the existing API.
   useEffect(() => {
     const controller = new AbortController();
 
@@ -149,8 +222,8 @@ export default function Home() {
             (item): item is Record<string, unknown> =>
               typeof item === "object" && item !== null
           )
-          .filter((item) => {
-            return (
+          .filter(
+            (item) =>
               (typeof item.id === "number" ||
                 typeof item.id === "string") &&
               typeof item.name === "string" &&
@@ -158,8 +231,7 @@ export default function Home() {
                 item.category === "FARM") &&
               Number.isFinite(Number(item.price)) &&
               Number(item.price) >= 0
-            );
-          })
+          )
           .map((item) => ({
             id: item.id as number | string,
             name: item.name as string,
@@ -211,10 +283,22 @@ export default function Home() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({
+        const coordinates = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        });
+        };
+
+        setLocation(coordinates);
+
+        try {
+          localStorage.setItem(
+            LOCATION_STORAGE_KEY,
+            JSON.stringify(coordinates)
+          );
+        } catch {
+          // Checkout must still verify that a location is available.
+        }
+
         setCheckingLocation(false);
         setLocationOpen(false);
         setLocationMessage("");
@@ -222,7 +306,7 @@ export default function Home() {
       () => {
         setCheckingLocation(false);
         setLocationMessage(
-          "Location was not shared. You can continue browsing, but sharing your location is required before ordering."
+          "Location was not shared. You can continue browsing, but you must share your location before placing an order."
         );
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
@@ -232,12 +316,12 @@ export default function Home() {
   function addToCart(product: Product) {
     setCart((current) => {
       const existing = current.find(
-        (item) => item.product.id === product.id
+        (item) => String(item.product.id) === String(product.id)
       );
 
       if (existing) {
         return current.map((item) =>
-          item.product.id === product.id
+          String(item.product.id) === String(product.id)
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -245,13 +329,19 @@ export default function Home() {
 
       return [...current, { product, quantity: 1 }];
     });
+
+    // Explicit confirmation prevents customers wondering whether
+    // their click added the item.
+    setAddedProduct(product.name);
+    setAddedNotice(true);
+    window.setTimeout(() => setAddedNotice(false), 2200);
   }
 
   function changeQuantity(id: number | string, amount: number) {
     setCart((current) =>
       current
         .map((item) =>
-          item.product.id === id
+          String(item.product.id) === String(id)
             ? { ...item, quantity: item.quantity + amount }
             : item
         )
@@ -263,6 +353,13 @@ export default function Home() {
     document.getElementById("products")?.scrollIntoView({
       behavior: "smooth",
     });
+  }
+
+  function goToCheckout() {
+    if (cart.length === 0) return;
+
+    setCartOpen(false);
+    window.location.href = "/checkout";
   }
 
   const visibleProducts = products.filter((product) => {
@@ -319,7 +416,7 @@ export default function Home() {
               <span aria-hidden="true">☰</span>
             </button>
 
-            <a href="#" className="shrink-0">
+            <a href="/" className="shrink-0">
               <span className="text-3xl font-extrabold tracking-tight">
                 <span className="text-green-700">Go</span>
                 <span className="text-red-700">Biz</span>
@@ -444,10 +541,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* REAL PRODUCT MARKETPLACE */}
+        {/* PRODUCT MARKETPLACE */}
         <section
           id="products"
-          className="mx-auto max-w-7xl px-4 py-9 sm:px-6 sm:py-12"
+          className="mx-auto max-w-7xl px-3 py-9 sm:px-6 sm:py-12"
         >
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
@@ -494,9 +591,7 @@ export default function Home() {
               <h3 className="font-bold text-red-900">
                 Products are temporarily unavailable
               </h3>
-              <p className="mt-2 text-sm text-red-800">
-                {productsError}
-              </p>
+              <p className="mt-2 text-sm text-red-800">{productsError}</p>
               <button
                 onClick={() => window.location.reload()}
                 className="mt-4 rounded-full bg-green-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-900"
@@ -506,11 +601,12 @@ export default function Home() {
             </div>
           ) : (
             <>
-              <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {/* 3 cards on phones; 4 cards on desktop */}
+              <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-4">
                 {visibleProducts.map((product) => (
                   <article
                     key={product.id}
-                    className="overflow-hidden rounded-2xl border border-neutral-200 bg-white transition hover:-translate-y-1 hover:shadow-lg"
+                    className="overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:shadow-lg sm:rounded-2xl"
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
                       {product.imageUrl ? (
@@ -523,20 +619,21 @@ export default function Home() {
                         />
                       ) : (
                         <div
-                          className="flex h-full w-full items-end bg-cover bg-center p-3 sm:p-4"
+                          className="flex h-full w-full items-end bg-cover bg-center p-2 sm:p-4"
                           style={{
                             backgroundImage: `linear-gradient(0deg, rgba(0,0,0,.62), rgba(0,0,0,.02)), url("${product.category === "FARM" ? farmImage : mealImage}")`,
                           }}
                         >
-                          <span className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold text-neutral-800 sm:text-xs">
+                          <span className="rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:text-xs">
                             {product.category === "FARM"
                               ? "Farm products"
                               : "Ready-made meal"}
                           </span>
                         </div>
                       )}
+
                       {product.imageUrl && (
-                        <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold text-neutral-800 sm:text-xs">
+                        <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:bottom-3 sm:left-3 sm:text-xs">
                           {product.category === "FARM"
                             ? "Farm products"
                             : "Ready-made meal"}
@@ -544,19 +641,19 @@ export default function Home() {
                       )}
                     </div>
 
-                    <div className="p-3 sm:p-4">
-                      <h3 className="font-bold leading-snug">
+                    <div className="p-2 sm:p-4">
+                      <h3 className="break-words text-xs font-bold leading-snug sm:text-base">
                         {product.name}
                       </h3>
-                      <p className="mt-1 min-h-8 text-xs leading-5 text-neutral-500">
+                      <p className="mt-1 line-clamp-2 min-h-7 text-[10px] leading-4 text-neutral-500 sm:min-h-10 sm:text-xs sm:leading-5">
                         {product.description || "Available from GoBiz."}
                       </p>
-                      <p className="mt-3 text-base font-extrabold sm:text-lg">
+                      <p className="mt-2 break-words text-xs font-extrabold sm:mt-3 sm:text-lg">
                         {formatPrice(product.price)}
                       </p>
                       <button
                         onClick={() => addToCart(product)}
-                        className="mt-3 w-full rounded-full bg-green-800 px-3 py-2.5 text-xs font-bold text-white hover:bg-green-900 sm:text-sm"
+                        className="mt-2 w-full rounded-full bg-green-800 px-1.5 py-2 text-[10px] font-bold text-white hover:bg-green-900 sm:mt-3 sm:px-3 sm:py-2.5 sm:text-sm"
                       >
                         Add to cart
                       </button>
@@ -743,10 +840,7 @@ export default function Home() {
                       </span>
                     </span>
 
-                    <span
-                      aria-hidden="true"
-                      className="shrink-0 text-neutral-400"
-                    >
+                    <span aria-hidden="true" className="shrink-0 text-neutral-400">
                       &gt;
                     </span>
                   </button>
@@ -919,29 +1013,23 @@ export default function Home() {
                             {formatPrice(item.product.price)} each
                           </p>
                           <p className="mt-1 font-bold">
-                            {formatPrice(
-                              item.product.price * item.quantity
-                            )}
+                            {formatPrice(item.product.price * item.quantity)}
                           </p>
                         </div>
 
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() =>
-                              changeQuantity(item.product.id, -1)
-                            }
+                            onClick={() => changeQuantity(item.product.id, -1)}
                             aria-label={`Remove one ${item.product.name}`}
                             className="h-9 w-9 rounded-full border hover:bg-neutral-100"
                           >
-                            -
+                            −
                           </button>
                           <span className="min-w-4 text-center font-semibold">
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() =>
-                              changeQuantity(item.product.id, 1)
-                            }
+                            onClick={() => changeQuantity(item.product.id, 1)}
                             aria-label={`Add one ${item.product.name}`}
                             className="h-9 w-9 rounded-full border hover:bg-neutral-100"
                           >
@@ -966,39 +1054,24 @@ export default function Home() {
 
                 {!location && cart.length > 0 && (
                   <p className="mt-3 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm leading-6 text-sky-900">
-                    Share your location before ordering so GoBiz can check
-                    delivery availability.
-                  </p>
-                )}
-
-                {locationMessage && (
-                  <p className="mt-3 rounded-xl bg-sky-50 p-3 text-sm text-sky-900">
-                    {locationMessage}
+                    You can continue to checkout, but sharing your GPS location
+                    is mandatory before an order can be placed.
                   </p>
                 )}
 
                 <button
                   disabled={cart.length === 0}
-                  onClick={() => {
-                    if (!location) {
-                      setCartOpen(false);
-                      setLocationOpen(true);
-                    } else {
-                      setLocationMessage(
-                        "Location captured in this browser session. Secure delivery validation and checkout still need to be connected to the GoBiz backend."
-                      );
-                    }
-                  }}
+                  onClick={goToCheckout}
                   className="mt-4 w-full rounded-full bg-green-800 px-5 py-3.5 font-bold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-neutral-300"
                 >
-                  {location ? "Continue to checkout" : "Share location to order"}
+                  Proceed to checkout
                 </button>
               </div>
             </section>
           </div>
         )}
 
-        {/* LOCATION PERMISSION */}
+        {/* FIRST-LOAD LOCATION PROMPT */}
         {locationOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
             <section className="w-full max-w-md overflow-hidden rounded-3xl border border-green-100 bg-white shadow-2xl">
@@ -1013,10 +1086,9 @@ export default function Home() {
 
               <div className="p-6">
                 <p className="text-sm leading-7 text-neutral-600">
-                  Share your location so we can check whether your destination
-                  falls within our current delivery radius. If we do not yet
-                  serve your area, we will let you know as we work toward
-                  expanding coverage.
+                  Share your GPS location so GoBiz can check delivery
+                  availability. You can skip this step to browse, but location
+                  sharing is required before placing an order.
                 </p>
 
                 {locationMessage && (
@@ -1043,12 +1115,36 @@ export default function Home() {
                 </button>
 
                 <p className="mt-4 text-center text-xs leading-5 text-neutral-500">
-                  You can browse without sharing. Location is required before
-                  an order can be placed. Your browser will ask for permission
-                  after you select the button above.
+                  You can browse without sharing. Your location is required
+                  when placing an order.
                 </p>
               </div>
             </section>
+          </div>
+        )}
+
+        {/* ADD-TO-CART CONFIRMATION */}
+        {addedNotice && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-5 left-1/2 z-[120] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-2xl bg-neutral-950 px-4 py-3 text-white shadow-2xl"
+          >
+            <p className="text-sm font-bold">Added to cart</p>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-xs text-neutral-300">
+                {addedProduct}
+              </p>
+              <button
+                onClick={() => {
+                  setAddedNotice(false);
+                  setCartOpen(true);
+                }}
+                className="shrink-0 rounded-full bg-white px-3 py-2 text-xs font-bold text-neutral-900"
+              >
+                View cart ({cartCount})
+              </button>
+            </div>
           </div>
         )}
       </main>
