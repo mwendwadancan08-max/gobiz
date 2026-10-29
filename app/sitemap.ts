@@ -1,10 +1,9 @@
-
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: "https://gobiz.co.ke",
+      url: "https://www.gobiz.co.ke",
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
