@@ -636,7 +636,7 @@ export default function Home() {
             </div>
           ) : (
             <>
-              <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {visibleProducts.map((product) => {
                   const cartItem = cart.find(
                     (item) =>
@@ -659,25 +659,13 @@ export default function Home() {
                           />
                         ) : (
                           <div
-                            className="flex h-full w-full items-end bg-cover bg-center p-2 sm:p-4"
+                            className="h-full w-full bg-cover bg-center"
+                            role="img"
+                            aria-label={product.name}
                             style={{
-                              backgroundImage: `linear-gradient(0deg, rgba(0,0,0,.62), rgba(0,0,0,.02)), url("${product.category === "FARM" ? farmImage : mealImage}")`,
+                              backgroundImage: `url("${product.category === "FARM" ? farmImage : mealImage}")`,
                             }}
-                          >
-                            <span className="rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:text-xs">
-                              {product.category === "FARM"
-                                ? "Farm products"
-                                : "Ready-made meal"}
-                            </span>
-                          </div>
-                        )}
-
-                        {product.imageUrl && (
-                          <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:bottom-3 sm:left-3 sm:text-xs">
-                            {product.category === "FARM"
-                              ? "Farm products"
-                              : "Ready-made meal"}
-                          </span>
+                          />
                         )}
                       </div>
 
