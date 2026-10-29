@@ -27,7 +27,14 @@ type OrderRequest = {
   longitude?: number;
 };
 
-type DbOrderStatus = "PENDING" | "COMPLETED" | "CANCELLED";
+type DbOrderStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "PREPARING"
+  | "READY"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "CANCELLED";
 
 function distanceKm(
   lat1: number,
@@ -57,6 +64,7 @@ function validCoordinate(value: unknown, min: number, max: number) {
   );
 }
 
+/* GET: Fetch orders, customer details, items, and GPS coordinates. */
 export async function GET() {
   try {
     const rows = await sql`
@@ -71,6 +79,8 @@ export async function GET() {
         o.building_name AS "buildingName",
         o.floor AS floor,
         o.delivery_notes AS "deliveryNotes",
+        o.latitude AS latitude,
+        o.longitude AS longitude,
         c.name AS customer,
         c.phone AS phone,
         c.email AS email,
@@ -100,6 +110,8 @@ export async function GET() {
         o.building_name,
         o.floor,
         o.delivery_notes,
+        o.latitude,
+        o.longitude,
         c.name,
         c.phone,
         c.email
@@ -115,6 +127,8 @@ export async function GET() {
       phone: String(row.phone),
       email: String(row.email),
       amount: Number(row.amount),
+      latitude: row.latitude == null ? null : Number(row.latitude),
+      longitude: row.longitude == null ? null : Number(row.longitude),
       fulfillmentMethod: String(row.fulfillmentMethod),
       status: String(row.status).toUpperCase(),
       items: Array.isArray(row.items) ? row.items : [],
@@ -123,6 +137,7 @@ export async function GET() {
     return NextResponse.json({ orders });
   } catch (error) {
     console.error("GoBiz orders fetch failed:", error);
+
     return NextResponse.json(
       { error: "Could not load orders." },
       { status: 500 }
@@ -130,6 +145,7 @@ export async function GET() {
   }
 }
 
+/* PATCH: Update order status using the database's allowed statuses. */
 export async function PATCH(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -140,18 +156,22 @@ export async function PATCH(request: Request) {
     const id = typeof body.id === "string" ? body.id.trim() : "";
     const status = body.status?.toUpperCase();
 
+    const allowedStatuses: DbOrderStatus[] = [
+      "PENDING",
+      "ACCEPTED",
+      "PREPARING",
+      "READY",
+      "OUT_FOR_DELIVERY",
+      "DELIVERED",
+      "CANCELLED",
+    ];
+
     if (!id) {
       return NextResponse.json(
         { error: "Order ID is required." },
         { status: 400 }
       );
     }
-
-    const allowedStatuses: DbOrderStatus[] = [
-      "PENDING",
-      "COMPLETED",
-      "CANCELLED",
-    ];
 
     if (!status || !allowedStatuses.includes(status as DbOrderStatus)) {
       return NextResponse.json(
@@ -160,11 +180,9 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Cast the parameter to the database column's type.
-    // This works when status is a PostgreSQL enum or text column.
     const updated = await sql`
       UPDATE public.customer_orders
-      SET status = ${status}::text
+      SET status = ${status}
       WHERE id::text = ${id}
       RETURNING
         id::text AS id,
@@ -181,18 +199,22 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({
       success: true,
-      order: updated[0],
+      order: {
+        ...updated[0],
+        status: String(updated[0].status).toUpperCase(),
+      },
     });
   } catch (error) {
     console.error("GoBiz order status update failed:", error);
 
     return NextResponse.json(
-      { error: "Could not update order status." },
+      { error: "Could not update order status. Check the server terminal." },
       { status: 500 }
     );
   }
 }
 
+/* POST: Validate and create an order, its items, payment, and event. */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OrderRequest;
@@ -323,7 +345,10 @@ export async function POST(request: Request) {
       )
     ) {
       return NextResponse.json(
-        { error: "Plot, floor, and door details must be under 100 characters." },
+        {
+          error:
+            "Plot, floor, and door details must be under 100 characters.",
+        },
         { status: 400 }
       );
     }
@@ -455,7 +480,10 @@ export async function POST(request: Request) {
 
       if (distance > Number(setting.radius_km)) {
         return NextResponse.json(
-          { error: "Your GPS location is outside the GoBiz delivery area." },
+          {
+            error:
+              "Your GPS location is outside the GoBiz delivery area.",
+          },
           { status: 422 }
         );
       }
