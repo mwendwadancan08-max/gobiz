@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import FeedbackWidget from "@/components/FeedbackWidget";
 
 type Product = {
@@ -76,6 +77,14 @@ const pages = {
 
 type PageName = keyof typeof pages;
 
+const pageRoutes: Record<PageName, string> = {
+  "About Us": "/about",
+  "How It Works": "/how-it-works",
+  FAQ: "/faq",
+  "Our Services": "/services",
+  "Contact Us": "/contact",
+};
+
 const mealImage =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=85";
 
@@ -89,33 +98,33 @@ function formatPrice(price: number) {
   return `KSh ${price.toLocaleString("en-KE")}`;
 }
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 export default function Home() {
   const [intro, setIntro] = useState(true);
-
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
-
   const [category, setCategory] = useState("ALL");
   const [search, setSearch] = useState("");
-
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartHydrated, setCartHydrated] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-
   const [menuOpen, setMenuOpen] = useState(false);
-  const [infoPage, setInfoPage] = useState<PageName | null>(null);
-
   const [locationOpen, setLocationOpen] = useState(false);
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [locationMessage, setLocationMessage] = useState("");
   const [checkingLocation, setCheckingLocation] = useState(false);
-
   const [addedProduct, setAddedProduct] = useState("");
   const [addedNotice, setAddedNotice] = useState(false);
 
-  // Keep the initial intro and location prompt.
-  // Customers may dismiss the prompt and browse without sharing.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setIntro(false);
@@ -125,7 +134,6 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // Restore the cart between homepage and checkout navigation.
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem(CART_STORAGE_KEY);
@@ -183,7 +191,6 @@ export default function Home() {
     }
   }, [cart, cartHydrated]);
 
-  // Load real products from the existing API.
   useEffect(() => {
     const controller = new AbortController();
 
@@ -296,7 +303,7 @@ export default function Home() {
             JSON.stringify(coordinates)
           );
         } catch {
-          // Checkout must still verify that a location is available.
+          // Checkout must still verify location availability.
         }
 
         setCheckingLocation(false);
@@ -330,8 +337,6 @@ export default function Home() {
       return [...current, { product, quantity: 1 }];
     });
 
-    // Explicit confirmation prevents customers wondering whether
-    // their click added the item.
     setAddedProduct(product.name);
     setAddedNotice(true);
     window.setTimeout(() => setAddedNotice(false), 2200);
@@ -349,10 +354,24 @@ export default function Home() {
     );
   }
 
+  function removeFromCart(id: number | string) {
+    setCart((current) =>
+      current.filter(
+        (item) => String(item.product.id) !== String(id)
+      )
+    );
+  }
+
   function scrollToProducts() {
     document.getElementById("products")?.scrollIntoView({
       behavior: "smooth",
+      block: "start",
     });
+  }
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setCategory("ALL");
   }
 
   function goToCheckout() {
@@ -362,16 +381,35 @@ export default function Home() {
     window.location.href = "/checkout";
   }
 
+  const searchTerms = normalizeSearchText(search)
+    .split(" ")
+    .filter(Boolean);
+
   const visibleProducts = products.filter((product) => {
     const matchesCategory =
       category === "ALL" || product.category === category;
 
-    const matchesSearch =
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.description.toLowerCase().includes(search.toLowerCase());
+    const productText = normalizeSearchText(
+      `${product.name} ${product.description}`
+    );
+
+    const matchesSearch = searchTerms.every((term) =>
+      productText.includes(term)
+    );
 
     return matchesCategory && matchesSearch;
   });
+
+  useEffect(() => {
+    if (!search.trim() || productsLoading || visibleProducts.length === 0) {
+      return;
+    }
+
+    document.getElementById("products")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [search, productsLoading, visibleProducts.length]);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -405,7 +443,6 @@ export default function Home() {
   return (
     <>
       <main className="min-h-screen bg-white text-neutral-900">
-        {/* HEADER */}
         <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6">
             <button
@@ -416,7 +453,7 @@ export default function Home() {
               <span aria-hidden="true">☰</span>
             </button>
 
-            <a href="/" className="shrink-0">
+            <Link href="/" className="shrink-0">
               <span className="text-3xl font-extrabold tracking-tight">
                 <span className="text-green-700">Go</span>
                 <span className="text-red-700">Biz</span>
@@ -424,13 +461,13 @@ export default function Home() {
               <span className="block text-[10px] text-red-900">
                 Powered by <span className="underline">DBC.creatives</span>
               </span>
-            </a>
+            </Link>
 
             <div className="hidden max-w-md flex-1 md:block">
               <input
                 type="search"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => handleSearchChange(event.target.value)}
                 placeholder="Search meals and farm products..."
                 aria-label="Search products"
                 className="w-full rounded-full border border-neutral-300 bg-neutral-50 px-5 py-3 text-sm outline-none focus:border-green-700"
@@ -449,15 +486,14 @@ export default function Home() {
             <input
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => handleSearchChange(event.target.value)}
               placeholder="Search meals and farm products..."
               aria-label="Search products"
-              className="w-full rounded-full border border-neutral-300 bg-neutral-50 px-4 py-2.5 text-sm outline-none focus:border-green-700"
+              className="w-full rounded-full border border-neutral-300 bg-neutral-50 px-4 py-2.5 text-xs outline-none focus:border-green-700"
             />
           </div>
         </header>
 
-        {/* HERO */}
         <section className="overflow-hidden border-b border-green-100 bg-gradient-to-br from-green-50 via-white to-sky-50">
           <div className="mx-auto grid max-w-7xl items-center gap-6 px-5 py-6 sm:px-8 sm:py-8 md:grid-cols-2 md:gap-8 md:py-9">
             <div>
@@ -541,10 +577,9 @@ export default function Home() {
           </div>
         </section>
 
-        {/* PRODUCT MARKETPLACE */}
         <section
           id="products"
-          className="mx-auto max-w-7xl px-3 py-9 sm:px-6 sm:py-12"
+          className="mx-auto max-w-7xl scroll-mt-36 px-3 py-9 sm:px-6 sm:py-12"
         >
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
@@ -601,65 +636,92 @@ export default function Home() {
             </div>
           ) : (
             <>
-              {/* 3 cards on phones; 4 cards on desktop */}
               <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-4">
-                {visibleProducts.map((product) => (
-                  <article
-                    key={product.id}
-                    className="overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:shadow-lg sm:rounded-2xl"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
-                      {product.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          loading="lazy"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="flex h-full w-full items-end bg-cover bg-center p-2 sm:p-4"
-                          style={{
-                            backgroundImage: `linear-gradient(0deg, rgba(0,0,0,.62), rgba(0,0,0,.02)), url("${product.category === "FARM" ? farmImage : mealImage}")`,
-                          }}
-                        >
-                          <span className="rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:text-xs">
+                {visibleProducts.map((product) => {
+                  const cartItem = cart.find(
+                    (item) =>
+                      String(item.product.id) === String(product.id)
+                  );
+
+                  return (
+                    <article
+                      key={product.id}
+                      className="overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:shadow-lg sm:rounded-2xl"
+                    >
+                      <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+                        {product.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="flex h-full w-full items-end bg-cover bg-center p-2 sm:p-4"
+                            style={{
+                              backgroundImage: `linear-gradient(0deg, rgba(0,0,0,.62), rgba(0,0,0,.02)), url("${product.category === "FARM" ? farmImage : mealImage}")`,
+                            }}
+                          >
+                            <span className="rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:text-xs">
+                              {product.category === "FARM"
+                                ? "Farm products"
+                                : "Ready-made meal"}
+                            </span>
+                          </div>
+                        )}
+
+                        {product.imageUrl && (
+                          <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:bottom-3 sm:left-3 sm:text-xs">
                             {product.category === "FARM"
                               ? "Farm products"
                               : "Ready-made meal"}
                           </span>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
-                      {product.imageUrl && (
-                        <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2 py-1 text-[9px] font-bold text-neutral-800 sm:bottom-3 sm:left-3 sm:text-xs">
-                          {product.category === "FARM"
-                            ? "Farm products"
-                            : "Ready-made meal"}
-                        </span>
-                      )}
-                    </div>
+                      <div className="p-2 sm:p-4">
+                        <h3 className="break-words text-xs font-bold leading-snug sm:text-base">
+                          {product.name}
+                        </h3>
+                        <p className="mt-1 line-clamp-2 min-h-7 text-[10px] leading-4 text-neutral-500 sm:min-h-10 sm:text-xs sm:leading-5">
+                          {product.description || "Available from GoBiz."}
+                        </p>
+                        <p className="mt-2 break-words text-xs font-extrabold sm:mt-3 sm:text-lg">
+                          {formatPrice(product.price)}
+                        </p>
 
-                    <div className="p-2 sm:p-4">
-                      <h3 className="break-words text-xs font-bold leading-snug sm:text-base">
-                        {product.name}
-                      </h3>
-                      <p className="mt-1 line-clamp-2 min-h-7 text-[10px] leading-4 text-neutral-500 sm:min-h-10 sm:text-xs sm:leading-5">
-                        {product.description || "Available from GoBiz."}
-                      </p>
-                      <p className="mt-2 break-words text-xs font-extrabold sm:mt-3 sm:text-lg">
-                        {formatPrice(product.price)}
-                      </p>
-                      <button
-                        onClick={() => addToCart(product)}
-                        className="mt-2 w-full rounded-full bg-green-800 px-1.5 py-2 text-[10px] font-bold text-white hover:bg-green-900 sm:mt-3 sm:px-3 sm:py-2.5 sm:text-sm"
-                      >
-                        Add to cart
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                        {cartItem ? (
+                          <div className="mt-2 flex items-center gap-1.5 sm:mt-3 sm:gap-2">
+                            <span className="flex min-h-9 flex-1 items-center justify-center rounded-full bg-red-700 px-1.5 py-2 text-[10px] font-bold text-white sm:text-sm">
+                              Added to cart
+                            </span>
+
+                            <span className="flex h-9 min-w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2 text-xs font-extrabold text-red-800">
+                              {cartItem.quantity}
+                            </span>
+
+                            <button
+                              onClick={() => addToCart(product)}
+                              aria-label={`Add another ${product.name}`}
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-800 text-xl font-bold text-white hover:bg-green-900"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => addToCart(product)}
+                            className="mt-2 w-full rounded-full bg-green-800 px-1.5 py-2 text-[10px] font-bold text-white hover:bg-green-900 sm:mt-3 sm:px-3 sm:py-2.5 sm:text-sm"
+                          >
+                            Add to cart
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
 
               {visibleProducts.length === 0 && (
@@ -691,7 +753,6 @@ export default function Home() {
           )}
         </section>
 
-        {/* FOOTER */}
         <footer className="border-t border-neutral-800 bg-neutral-950 text-white">
           <div className="mx-auto grid max-w-7xl gap-7 px-5 py-8 sm:grid-cols-3 sm:px-6">
             <div>
@@ -709,13 +770,13 @@ export default function Home() {
               <h3 className="font-bold">Explore GoBiz</h3>
               <div className="mt-3 flex flex-col items-start gap-2 text-sm text-neutral-300">
                 {(Object.keys(pages) as PageName[]).map((page) => (
-                  <button
+                  <Link
                     key={page}
-                    onClick={() => setInfoPage(page)}
+                    href={pageRoutes[page]}
                     className="hover:text-green-300"
                   >
                     {page}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -742,7 +803,6 @@ export default function Home() {
           </div>
         </footer>
 
-        {/* SIDE MENU */}
         {menuOpen && (
           <div
             className="fixed inset-0 z-50 bg-black/60"
@@ -789,12 +849,10 @@ export default function Home() {
                 </p>
 
                 {(Object.keys(pages) as PageName[]).map((page, index) => (
-                  <button
+                  <Link
                     key={page}
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setInfoPage(page);
-                    }}
+                    href={pageRoutes[page]}
+                    onClick={() => setMenuOpen(false)}
                     className={`mb-1.5 flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition hover:translate-x-1 ${
                       index === 0
                         ? "border-green-100 bg-green-50 hover:bg-green-100"
@@ -840,10 +898,13 @@ export default function Home() {
                       </span>
                     </span>
 
-                    <span aria-hidden="true" className="shrink-0 text-neutral-400">
+                    <span
+                      aria-hidden="true"
+                      className="shrink-0 text-neutral-400"
+                    >
                       &gt;
                     </span>
-                  </button>
+                  </Link>
                 ))}
 
                 <button
@@ -884,83 +945,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* INFORMATION DIALOGS */}
-        {infoPage && (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
-            onClick={() => setInfoPage(null)}
-          >
-            <section
-              className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="bg-gradient-to-r from-green-900 via-green-800 to-red-900 p-6 text-white sm:p-8">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-green-200">
-                      Welcome to GoBiz
-                    </p>
-                    <h2 className="mt-3 text-3xl font-extrabold">
-                      {infoPage}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-white/80">
-                      {pages[infoPage].subtitle}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setInfoPage(null)}
-                    aria-label="Close page"
-                    className="rounded-xl bg-white/10 px-3 py-1 text-2xl hover:bg-white/20"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-4 p-6 sm:p-8">
-                {pages[infoPage].body.map((paragraph, index) => (
-                  <div
-                    key={paragraph}
-                    className="flex gap-3 rounded-xl border border-neutral-100 bg-neutral-50 p-4"
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-sm font-bold text-green-900">
-                      {index + 1}
-                    </span>
-                    <p className="whitespace-pre-line text-sm leading-7 text-neutral-700">
-                      {paragraph}
-                    </p>
-                  </div>
-                ))}
-
-                {infoPage === "Contact Us" && (
-                  <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                    <a
-                      href="https://wa.me/254757699959"
-                      className="rounded-full bg-green-800 px-5 py-3 text-center text-sm font-bold text-white hover:bg-green-900"
-                    >
-                      Chat on WhatsApp
-                    </a>
-                    <a
-                      href="mailto:254gobiz@gmail.com"
-                      className="rounded-full border border-sky-200 bg-sky-50 px-5 py-3 text-center text-sm font-bold text-sky-900 hover:bg-sky-100"
-                    >
-                      Send us an email
-                    </a>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => setInfoPage(null)}
-                  className="mt-2 w-full rounded-full border border-neutral-300 px-5 py-3 text-sm font-semibold hover:bg-neutral-50"
-                >
-                  Back to GoBiz
-                </button>
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* CART DRAWER */}
         {cartOpen && (
           <div
             className="fixed inset-0 z-[70] bg-black/50"
@@ -1001,39 +985,66 @@ export default function Home() {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-5">
+                  <div className="space-y-3">
                     {cart.map((item) => (
                       <div
                         key={item.product.id}
-                        className="flex items-center justify-between gap-4 border-b border-neutral-100 pb-4"
+                        className="flex flex-col gap-3 rounded-2xl border border-green-200 bg-green-50/50 p-4 shadow-sm"
                       >
-                        <div>
-                          <h3 className="font-bold">{item.product.name}</h3>
-                          <p className="mt-1 text-sm text-neutral-500">
-                            {formatPrice(item.product.price)} each
-                          </p>
-                          <p className="mt-1 font-bold">
-                            {formatPrice(item.product.price * item.quantity)}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="break-words font-bold text-neutral-900">
+                              {item.product.name}
+                            </h3>
+                            <p className="mt-1 text-xs text-neutral-500">
+                              {item.product.category === "FARM"
+                                ? "Farm product"
+                                : "Ready-made meal"}
+                            </p>
+                            <p className="mt-1 text-sm text-neutral-500">
+                              {formatPrice(item.product.price)} each
+                            </p>
+                          </div>
+
+                          <p className="shrink-0 font-extrabold text-green-900">
+                            {formatPrice(
+                              item.product.price * item.quantity
+                            )}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 rounded-full border border-neutral-200 bg-white p-1">
+                            <button
+                              onClick={() =>
+                                changeQuantity(item.product.id, -1)
+                              }
+                              aria-label={`Remove one ${item.product.name}`}
+                              className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 text-lg font-bold text-neutral-800 hover:bg-neutral-100"
+                            >
+                              −
+                            </button>
+
+                            <span className="min-w-5 text-center text-sm font-extrabold text-neutral-900">
+                              {item.quantity}
+                            </span>
+
+                            <button
+                              onClick={() =>
+                                changeQuantity(item.product.id, 1)
+                              }
+                              aria-label={`Add one ${item.product.name}`}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-green-800 text-lg font-bold text-white hover:bg-green-900"
+                            >
+                              +
+                            </button>
+                          </div>
+
                           <button
-                            onClick={() => changeQuantity(item.product.id, -1)}
-                            aria-label={`Remove one ${item.product.name}`}
-                            className="h-9 w-9 rounded-full border hover:bg-neutral-100"
+                            onClick={() => removeFromCart(item.product.id)}
+                            className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100"
                           >
-                            −
-                          </button>
-                          <span className="min-w-4 text-center font-semibold">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => changeQuantity(item.product.id, 1)}
-                            aria-label={`Add one ${item.product.name}`}
-                            className="h-9 w-9 rounded-full border hover:bg-neutral-100"
-                          >
-                            +
+                            Remove item
                           </button>
                         </div>
                       </div>
@@ -1071,7 +1082,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* FIRST-LOAD LOCATION PROMPT */}
         {locationOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
             <section className="w-full max-w-md overflow-hidden rounded-3xl border border-green-100 bg-white shadow-2xl">
@@ -1123,7 +1133,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* ADD-TO-CART CONFIRMATION */}
         {addedNotice && (
           <div
             role="status"
