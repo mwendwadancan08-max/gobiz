@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from "react";
@@ -6,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { label: "Overview", href: "/admin" },
+  { label: "Employees", href: "/admin/employees" },
   { label: "Orders", href: "/admin/orders" },
   { label: "Analytics", href: "/admin/analytics" },
   { label: "Reviews & complaints", href: "/admin/reviews" },
@@ -34,6 +36,7 @@ export default function AdminLayout({
             <span className="text-green-400">Go</span>
             <span className="text-red-400">Biz</span>
           </span>
+
           <span className="ml-3 text-xs text-white/60">
             Admin
           </span>
@@ -80,7 +83,9 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
 
         <footer className="border-t border-gray-200 px-6 py-5 text-center text-xs text-gray-500">
           GoBiz Food & Farm Market Admin
