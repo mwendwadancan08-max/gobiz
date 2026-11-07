@@ -17,9 +17,9 @@ const heroImage =
 const farmCardImage =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=70";
 
-// Prepared meal — small card
+// Prepared meal — small card (pizza — appetizing, indulgent)
 const mealCardImage =
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=70";
+  "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=70";
 
 export default function WelcomePage() {
   return (

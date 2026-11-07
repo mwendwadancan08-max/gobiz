@@ -1,15 +1,13 @@
 "use client";
 
 import type { ReactElement } from "react";
-
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { InfoSlug } from "@/components/GoBizInfoPage";
 
 const GoBizInfoPage = dynamic(
-  () =>
-    import("@/components/GoBizInfoPage").then((m) => m.GoBizInfoPage),
+  () => import("@/components/GoBizInfoPage").then((m) => m.GoBizInfoPage),
   { ssr: false }
 );
 
@@ -89,8 +87,7 @@ export default function WelcomeNav() {
   }, [menuOpen, activePopup]);
 
   useEffect(() => {
-    document.body.style.overflow =
-      menuOpen || activePopup ? "hidden" : "";
+    document.body.style.overflow = menuOpen || activePopup ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -99,6 +96,22 @@ export default function WelcomeNav() {
   function openPopup(slug: InfoSlug) {
     setMenuOpen(false);
     setActivePopup(slug);
+  }
+
+  // Intercept clicks inside the popup. Any <Link href="/"> or anchor to "/"
+  // is treated as "close the popup" — because navigating to "/" while the
+  // popup is open is a no-op visually (we're already on "/").
+  function handlePopupClick(e: React.MouseEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    const target = e.target as HTMLElement;
+    const anchor = target.closest("a");
+    if (!anchor) return;
+
+    const href = anchor.getAttribute("href");
+    if (href === "/" || href === "" || href === null) {
+      e.preventDefault();
+      setActivePopup(null);
+    }
   }
 
   return (
@@ -121,18 +134,15 @@ export default function WelcomeNav() {
           aria-modal="true"
           aria-label="GoBiz menu"
         >
-          {/* Blurred backdrop */}
           <div
             className="absolute inset-0 bg-green-950/70 backdrop-blur-md"
             onClick={() => setMenuOpen(false)}
           />
 
-          {/* Glass card */}
           <div
             className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-[0_30px_100px_-30px_rgba(0,0,0,0.7)] backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Brand glows */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-red-500/30 blur-3xl"
@@ -142,7 +152,6 @@ export default function WelcomeNav() {
               className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-green-500/30 blur-3xl"
             />
 
-            {/* Header */}
             <div className="relative flex items-start justify-between gap-4 border-b border-white/15 p-6 sm:p-8">
               <div>
                 <p className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
@@ -162,7 +171,6 @@ export default function WelcomeNav() {
               </button>
             </div>
 
-            {/* Nav grid */}
             <div className="relative grid gap-2 p-4 sm:grid-cols-2 sm:p-6">
               {navItems.map((item) => (
                 <button
@@ -199,7 +207,6 @@ export default function WelcomeNav() {
               ))}
             </div>
 
-            {/* Actions */}
             <div className="relative flex flex-col gap-2 border-t border-white/15 p-4 sm:flex-row sm:p-6">
               <Link
                 href="/products"
@@ -230,18 +237,15 @@ export default function WelcomeNav() {
           role="dialog"
           aria-modal="true"
         >
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => setActivePopup(null)}
           />
 
-          {/* Popup card */}
           <div
             className="relative my-8 w-full max-w-3xl overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            onClick={handlePopupClick}
           >
-            {/* Close */}
             <button
               onClick={() => setActivePopup(null)}
               aria-label="Close"
@@ -250,7 +254,6 @@ export default function WelcomeNav() {
               ×
             </button>
 
-            {/* Info content */}
             <GoBizInfoPage slug={activePopup} />
           </div>
         </div>
