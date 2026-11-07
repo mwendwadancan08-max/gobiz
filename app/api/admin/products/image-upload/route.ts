@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     if (
       !["ADMIN", "EMPLOYEE"].includes(profile?.role ?? "") ||
-      profile.approval_status !== "APPROVED"
+      profile?.approval_status !== "APPROVED"
     ) {
       return NextResponse.json(
         { error: "Only approved staff can upload product images." },
