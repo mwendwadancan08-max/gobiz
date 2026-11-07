@@ -37,12 +37,12 @@ async function requireAdmin() {
     | undefined;
 
   if (
-    profile?.role !== "ADMIN" ||
-    profile.approval_status !== "APPROVED"
+    !["ADMIN", "EMPLOYEE"].includes(profile?.role ?? "") ||
+    profile?.approval_status !== "APPROVED"
   ) {
     return {
       error: NextResponse.json(
-        { error: "Only approved admins can manage products." },
+        { error: "Only approved staff can manage products." },
         { status: 403 }
       ),
     };
