@@ -177,18 +177,18 @@ const pageIcons: Record<PageName, () => ReactElement> = {
 };
 
 const mealImage =
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=85";
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=70";
 
 const farmImage =
-  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=85";
+  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=70";
 
 const heroImages = [
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=2000&q=85",
-  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=2000&q=85",
-  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=2000&q=85",
-  "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=2000&q=85",
-  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=2000&q=85",
-  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=2000&q=85",
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=70",
+  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=70",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=70",
+  "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=1200&q=70",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=70",
+  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1200&q=70",
 ];
 
 const CART_STORAGE_KEY = "gobiz-cart";
@@ -237,14 +237,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (intro) return;
+    if (intro || menuOpen || cartOpen || locationOpen) return;
 
     const interval = window.setInterval(() => {
       setHeroSlide((current) => (current + 1) % heroImages.length);
     }, 3000);
 
     return () => window.clearInterval(interval);
-  }, [intro]);
+  }, [intro, menuOpen, cartOpen, locationOpen]);
 
   // Track scroll so we can switch the cart from "on-hero" to "sticky pinned"
   useEffect(() => {

@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
@@ -77,17 +76,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-  modal,
 }: Readonly<{
   children: React.ReactNode;
-  modal: React.ReactNode;
 }>) {
   return (
     <html lang="en-KE">
-      <body>
-        {children}
-        {modal}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
