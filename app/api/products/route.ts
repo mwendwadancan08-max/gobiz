@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Only approved administrators may create products.
+    // Only approved staff (admins or employees) may create products.
     const profiles = await sql.query(
       `SELECT role, approval_status
        FROM public.app_users
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
     if (
       !profile ||
-      profile.role !== "ADMIN" ||
+      !["ADMIN", "EMPLOYEE"].includes(profile.role) ||
       profile.approval_status !== "APPROVED"
     ) {
       return NextResponse.json(

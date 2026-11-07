@@ -50,11 +50,11 @@ export async function POST(request: Request) {
       | undefined;
 
     if (
-      profile?.role !== "ADMIN" ||
+      !["ADMIN", "EMPLOYEE"].includes(profile?.role ?? "") ||
       profile.approval_status !== "APPROVED"
     ) {
       return NextResponse.json(
-        { error: "Only approved admins can upload product images." },
+        { error: "Only approved staff can upload product images." },
         { status: 403 }
       );
     }
