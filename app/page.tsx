@@ -1,7 +1,7 @@
-﻿
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactElement } from "react";
 import Link from "next/link";
 import FeedbackWidget from "@/components/FeedbackWidget";
 
@@ -85,11 +85,111 @@ const pageRoutes: Record<PageName, string> = {
   "Contact Us": "/contact",
 };
 
+const pageDescriptions: Record<PageName, string> = {
+  "About Us": "Who we are",
+  "How It Works": "Ordering and delivery",
+  FAQ: "Answers to common questions",
+  "Our Services": "What we offer",
+  "Contact Us": "Get in touch",
+};
+
+function AboutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
+function HowItWorksIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function FaqIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
+function ServicesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+function ContactIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+const pageIcons: Record<PageName, () => ReactElement> = {
+  "About Us": AboutIcon,
+  "How It Works": HowItWorksIcon,
+  FAQ: FaqIcon,
+  "Our Services": ServicesIcon,
+  "Contact Us": ContactIcon,
+};
+
 const mealImage =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=85";
 
 const farmImage =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=85";
+
+const heroImages = [
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=2000&q=85",
+  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=2000&q=85",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=2000&q=85",
+  "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=2000&q=85",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=2000&q=85",
+  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=2000&q=85",
+];
 
 const CART_STORAGE_KEY = "gobiz-cart";
 const LOCATION_STORAGE_KEY = "gobiz-location";
@@ -109,6 +209,7 @@ function normalizeSearchText(value: string) {
 
 export default function Home() {
   const [intro, setIntro] = useState(true);
+  const [heroSlide, setHeroSlide] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
@@ -124,6 +225,7 @@ export default function Home() {
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [addedProduct, setAddedProduct] = useState("");
   const [addedNotice, setAddedNotice] = useState(false);
+  const [showStickyCart, setShowStickyCart] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -132,6 +234,28 @@ export default function Home() {
     }, 1000);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (intro) return;
+
+    const interval = window.setInterval(() => {
+      setHeroSlide((current) => (current + 1) % heroImages.length);
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [intro]);
+
+  // Track scroll so we can switch the cart from "on-hero" to "sticky pinned"
+  useEffect(() => {
+    function onScroll() {
+      setShowStickyCart(window.scrollY > 220);
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -427,12 +551,6 @@ export default function Home() {
               <span className="text-green-700">Go</span>
               <span className="text-red-700">Biz</span>
             </h1>
-            <a
-              href="https://dbc-pi-two.vercel.app"
-              className="mt-3 inline-block text-sm text-red-900"
-            >
-              Powered by DBC.creatives
-            </a>
           </div>
         </main>
         <FeedbackWidget />
@@ -443,143 +561,198 @@ export default function Home() {
   return (
     <>
       <main className="min-h-screen bg-white text-neutral-900">
-        <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6">
-            <button
-              onClick={() => setMenuOpen(true)}
-              aria-label="Open GoBiz menu"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-2xl hover:border-green-700 hover:bg-green-50"
-            >
-              <span aria-hidden="true">☰</span>
-            </button>
-
-            <Link href="/" className="shrink-0">
-              <span className="text-3xl font-extrabold tracking-tight">
-                <span className="text-green-700">Go</span>
-                <span className="text-red-700">Biz</span>
-              </span>
-              <span className="block text-[10px] text-red-900">
-                Powered by <span className="underline">DBC.creatives</span>
-              </span>
-            </Link>
-
-            <div className="hidden max-w-md flex-1 md:block">
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => handleSearchChange(event.target.value)}
-                placeholder="Search meals and farm products..."
-                aria-label="Search products"
-                className="w-full rounded-full border border-neutral-300 bg-neutral-50 px-5 py-3 text-sm outline-none focus:border-green-700"
-              />
-            </div>
-
-            <button
-              onClick={() => setCartOpen(true)}
-              className="ml-auto shrink-0 rounded-full bg-green-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-900 sm:px-5"
-            >
-              Cart ({cartCount})
-            </button>
-          </div>
-
-          <div className="px-4 pb-3 md:hidden">
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => handleSearchChange(event.target.value)}
-              placeholder="Search meals and farm products..."
-              aria-label="Search products"
-              className="w-full rounded-full border border-neutral-300 bg-neutral-50 px-4 py-2.5 text-xs outline-none focus:border-green-700"
+        {/* ===== HERO (no header strip — starts at the very top) ===== */}
+        <section className="relative overflow-hidden">
+          {/* Slideshow background */}
+          {heroImages.map((src, index) => (
+            <div
+              key={src}
+              className="absolute inset-0 bg-cover bg-center transition-opacity duration-[1400ms] ease-in-out"
+              style={{
+                backgroundImage: `url("${src}")`,
+                opacity: heroSlide === index ? 1 : 0,
+              }}
+              aria-hidden="true"
             />
-          </div>
-        </header>
+          ))}
 
-        <section className="overflow-hidden border-b border-green-100 bg-gradient-to-br from-green-50 via-white to-sky-50">
-          <div className="mx-auto grid max-w-7xl items-center gap-6 px-5 py-6 sm:px-8 sm:py-8 md:grid-cols-2 md:gap-8 md:py-9">
-            <div>
-              <p className="mb-2 inline-block rounded-full border border-green-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-800 sm:text-xs">
-                Meals and farm products in one place
+          <div
+            className="absolute inset-0 bg-gradient-to-br from-green-950/95 via-green-900/80 to-red-950/70"
+            aria-hidden="true"
+          />
+
+          <div
+            className="absolute inset-0 opacity-[0.06] mix-blend-overlay"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+            }}
+            aria-hidden="true"
+          />
+
+          {/* ===== Floating hamburger (top-left, on the hero) ===== */}
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open GoBiz menu"
+            className="absolute left-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/15 text-2xl text-white shadow-lg shadow-black/20 backdrop-blur-md transition hover:bg-white hover:text-green-900 sm:left-6 sm:top-6"
+            style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+          >
+            <span aria-hidden="true">☰</span>
+          </button>
+
+          {/* ===== Floating cart (top-right, on the hero) ===== */}
+          <button
+            onClick={() => setCartOpen(true)}
+            aria-label="Open cart"
+            className="group absolute right-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-black/20 backdrop-blur-md transition hover:bg-white hover:text-green-900 sm:right-6 sm:top-6"
+            style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+          >
+            <span className="transition group-hover:text-green-900">
+              <CartIcon />
+            </span>
+            <span className="hidden sm:inline">Cart</span>
+            <span className="flex min-w-6 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-[11px] font-extrabold text-green-900 transition group-hover:bg-green-900 group-hover:text-white">
+              {cartCount}
+            </span>
+          </button>
+
+          {/* Hero content */}
+          <div className="relative mx-auto max-w-7xl px-5 pb-8 pt-16 sm:px-8 sm:pb-10 sm:pt-20 md:pb-12 md:pt-24 lg:pb-14 lg:pt-28">
+            <div className="max-w-2xl">
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-sm sm:text-[11px]">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                Meals · Farm · Delivered
               </p>
 
-              <h1 className="text-6xl font-extrabold leading-none tracking-tight sm:text-7xl lg:text-8xl">
-                <span className="text-green-700">Go</span>
-                <span className="text-red-700">Biz</span>
+              <h1 className="mt-4 text-5xl font-extrabold leading-none tracking-tight text-white drop-shadow-2xl sm:text-6xl lg:text-7xl">
+                <span className="text-green-400">Go</span>
+                <span className="text-red-400">Biz</span>
               </h1>
 
-              <h2 className="mt-3 max-w-lg text-xl font-bold leading-tight sm:text-2xl">
+              <h2 className="mt-3 max-w-xl text-xl font-extrabold leading-tight text-white sm:text-2xl lg:text-3xl">
                 Good food. Fresh from the farm.
               </h2>
 
-              <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600 sm:text-base">
-                Discover ready-made meals and fresh farm products, all in one
+              <p className="mt-2 max-w-xl text-sm leading-6 text-green-50/90 sm:text-base">
+                Discover ready-made meals and fresh farm products in one
                 convenient marketplace.
               </p>
 
-              <button
-                onClick={scrollToProducts}
-                className="mt-4 rounded-full bg-green-800 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-green-900"
-              >
-                Explore products
-              </button>
-
-              <p className="mt-2 text-xs text-neutral-500">
-                Convenient ordering. Pay on delivery.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => {
-                  setCategory("READY_MADE");
+              {/* Single search bar for the whole page */}
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
                   scrollToProducts();
                 }}
-                className="group relative flex min-h-40 flex-col justify-end overflow-hidden rounded-2xl bg-green-950 p-4 text-left text-white shadow-md transition hover:-translate-y-1 sm:min-h-52 sm:rounded-3xl sm:p-5"
-                style={{
-                  backgroundImage: `linear-gradient(0deg, rgba(10,40,22,.92), rgba(10,40,22,.08)), url("${mealImage}")`,
-                  backgroundPosition: "center",
-                  backgroundSize: "cover",
-                }}
+                className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center"
+                role="search"
               >
-                <span className="text-xs font-semibold uppercase tracking-wider text-green-100">
-                  Discover
-                </span>
-                <span className="mt-2 text-xl font-extrabold leading-tight sm:text-2xl">
+                <div className="relative flex-1">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400"
+                    aria-hidden="true"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(event) =>
+                      handleSearchChange(event.target.value)
+                    }
+                    placeholder="Search meals, farm produce, prices..."
+                    aria-label="Search products"
+                    className="w-full rounded-full border border-white/30 bg-white/95 py-3 pl-12 pr-4 text-sm text-neutral-900 shadow-lg outline-none placeholder:text-neutral-500 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 sm:py-3.5 sm:text-base"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="rounded-full bg-red-700 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-red-800 sm:py-3.5 sm:text-base"
+                >
+                  Search
+                </button>
+              </form>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    setCategory("READY_MADE");
+                    scrollToProducts();
+                  }}
+                  className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white hover:text-green-900"
+                >
                   Ready-made meals
-                </span>
-                <span className="mt-3 inline-flex w-fit rounded-full bg-white px-3 py-2 text-xs font-bold text-green-900 sm:text-sm">
-                  Browse meals
-                </span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setCategory("FARM");
-                  scrollToProducts();
-                }}
-                className="group relative mt-4 flex min-h-40 flex-col justify-end overflow-hidden rounded-2xl bg-red-950 p-4 text-left text-white shadow-md transition hover:-translate-y-1 sm:mt-6 sm:min-h-52 sm:rounded-3xl sm:p-5"
-                style={{
-                  backgroundImage: `linear-gradient(0deg, rgba(75,15,15,.94), rgba(75,15,15,.08)), url("${farmImage}")`,
-                  backgroundPosition: "center",
-                  backgroundSize: "cover",
-                }}
-              >
-                <span className="text-xs font-semibold uppercase tracking-wider text-red-100">
-                  Shop fresh
-                </span>
-                <span className="mt-2 text-xl font-extrabold leading-tight sm:text-2xl">
+                </button>
+                <button
+                  onClick={() => {
+                    setCategory("FARM");
+                    scrollToProducts();
+                  }}
+                  className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white hover:text-red-900"
+                >
                   Farm products
-                </span>
-                <span className="mt-3 inline-flex w-fit rounded-full bg-white px-3 py-2 text-xs font-bold text-red-900 sm:text-sm">
-                  Browse produce
-                </span>
-              </button>
+                </button>
+                <button
+                  onClick={scrollToProducts}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold text-green-100 transition hover:text-white"
+                >
+                  Browse all products
+                  <ChevronRightIcon />
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-green-100/90 sm:text-sm">
+                <span>Pay on delivery</span>
+                <span className="text-green-300/50">•</span>
+                <span>Fresh from verified sellers</span>
+                <span className="text-green-300/50">•</span>
+                <span>Quick delivery in your area</span>
+              </div>
             </div>
+          </div>
+
+          <div className="relative flex items-center justify-center gap-1.5 pb-3">
+            {heroImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setHeroSlide(index)}
+                aria-label={`Show hero image ${index + 1}`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  heroSlide === index
+                    ? "w-6 bg-white"
+                    : "w-1.5 bg-white/40 hover:bg-white/70"
+                }`}
+              />
+            ))}
           </div>
         </section>
 
+        {/* ===== Sticky cart that appears after scrolling past the hero ===== */}
+        {showStickyCart && (
+          <button
+            onClick={() => setCartOpen(true)}
+            aria-label="Open cart"
+            className="group fixed right-4 top-4 z-40 flex items-center gap-2 rounded-full bg-green-800 px-3 py-2 text-sm font-semibold text-white shadow-xl shadow-green-900/30 transition hover:bg-green-900 sm:right-6 sm:top-6"
+            style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+          >
+            <CartIcon />
+            <span className="hidden sm:inline">Cart</span>
+            <span className="flex min-w-6 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-[11px] font-extrabold text-green-900">
+              {cartCount}
+            </span>
+          </button>
+        )}
+
         <section
           id="products"
-          className="mx-auto max-w-7xl scroll-mt-36 px-3 py-9 sm:px-6 sm:py-12"
+          className="mx-auto max-w-7xl scroll-mt-24 px-3 py-9 sm:px-6 sm:py-12"
         >
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
@@ -795,139 +968,133 @@ export default function Home() {
           <div
             className="fixed inset-0 z-50 bg-black/60"
             onClick={() => setMenuOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="GoBiz menu"
           >
             <aside
-              className="flex h-full w-[min(360px,90vw)] flex-col overflow-y-auto bg-white shadow-2xl"
+              className="ml-0 flex h-full w-[min(400px,90vw)] flex-col bg-white shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="bg-gradient-to-br from-green-900 via-green-800 to-green-950 p-6 text-white">
+              <div className="border-b border-neutral-200 bg-gradient-to-b from-green-50 to-white px-5 pt-5 pb-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-3xl font-extrabold">
-                      <span className="text-green-300">Go</span>
-                      <span className="text-red-300">Biz</span>
-                    </h2>
-                    <p className="mt-2 text-sm text-green-100">
-                      Good food. Fresh from the farm.
+                    <p className="text-3xl font-extrabold tracking-tight">
+                      <span className="text-green-700">Go</span>
+                      <span className="text-red-700">Biz</span>
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-600">
+                      Meals and farm products, in one place.
                     </p>
                   </div>
                   <button
                     onClick={() => setMenuOpen(false)}
                     aria-label="Close menu"
-                    className="rounded-xl bg-white/10 px-3 py-1 text-2xl hover:bg-white/20"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-xl text-neutral-700 transition hover:border-red-300 hover:text-red-700"
                   >
                     ×
                   </button>
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-white/15 bg-white/10 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-green-200">
-                    Explore
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-white">
-                    Find meals, discover farm produce and learn more about
-                    GoBiz.
-                  </p>
-                </div>
+                <Link
+                  href="/signin"
+                  onClick={() => setMenuOpen(false)}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border-2 border-green-800 bg-white px-4 py-3 text-sm font-bold text-green-800 transition hover:bg-green-800 hover:text-white"
+                >
+                  <UserIcon />
+                  Sign in to your account
+                </Link>
               </div>
 
-              <nav className="flex-1 p-3">
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                  Information
+              <nav className="flex-1 overflow-y-auto px-3 py-4">
+                <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Navigation
                 </p>
 
-                {(Object.keys(pages) as PageName[]).map((page, index) => (
-                  <Link
-                    key={page}
-                    href={pageRoutes[page]}
-                    onClick={() => setMenuOpen(false)}
-                    className={`mb-1.5 flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition hover:translate-x-1 ${
-                      index === 0
-                        ? "border-green-100 bg-green-50 hover:bg-green-100"
-                        : index === 1
-                          ? "border-sky-100 bg-sky-50 hover:bg-sky-100"
-                          : index === 2
-                            ? "border-red-100 bg-red-50 hover:bg-red-100"
-                            : index === 3
-                              ? "border-amber-100 bg-amber-50 hover:bg-amber-100"
-                              : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100"
-                    }`}
-                  >
-                    <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold ${
-                        index === 0
-                          ? "bg-green-800 text-white"
-                          : index === 1
-                            ? "bg-sky-700 text-white"
-                            : index === 2
-                              ? "bg-red-800 text-white"
-                              : index === 3
-                                ? "bg-amber-600 text-white"
-                                : "bg-neutral-800 text-white"
-                      }`}
-                    >
-                      {["A", "H", "?", "S", "C"][index]}
-                    </span>
+                <div className="space-y-0.5">
+                  {(Object.keys(pages) as PageName[]).map((page) => {
+                    const Icon = pageIcons[page];
+                    return (
+                      <Link
+                        key={page}
+                        href={pageRoutes[page]}
+                        onClick={() => setMenuOpen(false)}
+                        className="group flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-neutral-50"
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-800 transition group-hover:bg-green-800 group-hover:text-white">
+                          <Icon />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-neutral-900">
+                            {page}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-neutral-500">
+                            {pageDescriptions[page]}
+                          </span>
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className="shrink-0 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-green-700"
+                        >
+                          <ChevronRightIcon />
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
 
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-neutral-900">
-                        {page}
-                      </span>
-                      <span className="mt-0.5 block text-[10px] text-neutral-500">
-                        {
-                          [
-                            "Who we are",
-                            "Ordering and delivery",
-                            "Answers to common questions",
-                            "What we offer",
-                            "Get in touch",
-                          ][index]
-                        }
-                      </span>
-                    </span>
-
-                    <span
-                      aria-hidden="true"
-                      className="shrink-0 text-neutral-400"
-                    >
-                      &gt;
-                    </span>
-                  </Link>
-                ))}
+                <p className="mt-6 px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Your order
+                </p>
 
                 <button
                   onClick={() => {
                     setMenuOpen(false);
                     setCartOpen(true);
                   }}
-                  className="mt-2 w-full rounded-lg bg-red-800 px-3 py-2.5 text-left text-sm font-bold text-white hover:bg-red-900"
+                  className="flex w-full items-center gap-3 rounded-lg bg-green-800 px-4 py-3 text-left text-white transition hover:bg-green-900"
                 >
-                  Open my cart ({cartCount})
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15">
+                    <CartIcon />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold">
+                      Open my cart
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-green-100">
+                      {cartCount} item{cartCount === 1 ? "" : "s"} waiting
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold text-green-900">
+                    {cartCount}
+                  </span>
                 </button>
               </nav>
 
-              <div className="border-t border-neutral-200 bg-neutral-50 p-5">
-                <p className="text-sm font-semibold text-neutral-800">
+              <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-4">
+                <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                   Need assistance?
                 </p>
                 <a
                   href="https://wa.me/254757699959"
-                  className="mt-2 inline-flex w-full justify-center rounded-full bg-green-800 px-4 py-3 text-sm font-bold text-white hover:bg-green-900"
+                  className="mt-2 flex items-center justify-center gap-2 rounded-full bg-green-800 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-900"
                 >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.15h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.82 2.41a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.16.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.48-1.39-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.44.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.42-.14 0-.31-.02-.47-.02-.17 0-.44.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29Z" />
+                  </svg>
                   Contact GoBiz on WhatsApp
                 </a>
-                <a
-                  href="https://dbc-pi-two.vercel.app"
-                  className="mt-4 block text-center text-xs text-red-900 underline"
-                >
-                  Powered by DBC.creatives
-                </a>
-                <a
-                  href="/signin"
-                  className="mx-auto mt-3 block w-fit rounded-full border border-green-100 bg-white px-3 py-1.5 text-[10px] font-medium text-green-800 opacity-70 transition hover:border-green-300 hover:opacity-100"
-                >
-                  Sign in
-                </a>
+                <div className="mt-3 flex items-center justify-between">
+                  <a
+                    href="https://dbc-pi-two.vercel.app"
+                    className="text-[10px] text-neutral-500 underline underline-offset-2 hover:text-red-700"
+                  >
+                    Powered by DBC.creatives
+                  </a>
+                  <span className="text-[10px] text-neutral-400">
+                    v1.0
+                  </span>
+                </div>
               </div>
             </aside>
           </div>
