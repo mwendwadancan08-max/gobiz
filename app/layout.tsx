@@ -36,14 +36,6 @@ export const metadata: Metadata = {
     title: "GoBiz | Good Food. Better Living.",
     description:
       "Discover ready-made meals and fresh farm products with GoBiz, your everyday food market.",
-    images: [
-      {
-        url: "/opengraph-image.png",
-        width: 1200,
-        height: 630,
-        alt: "GoBiz Food & Farm Market",
-      },
-    ],
     locale: "en_KE",
   },
 
@@ -52,15 +44,6 @@ export const metadata: Metadata = {
     title: "GoBiz | Good Food. Better Living.",
     description:
       "Your everyday food market for ready-made meals and fresh farm products.",
-    images: ["/opengraph-image.png"],
-  },
-
-  icons: {
-    icon: [
-      { url: "/favicon.ico" },
-      { url: "/icon.png", type: "image/png", sizes: "512x512" },
-    ],
-    apple: "/apple-icon.png",
   },
 
   manifest: "/manifest.json",
