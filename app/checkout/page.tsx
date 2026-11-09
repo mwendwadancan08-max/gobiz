@@ -1,16 +1,26 @@
-
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+
+type Variant = {
+  id: string;
+  label: string;
+  price: number;
+  available: boolean;
+};
 
 type Product = {
   id: string | number;
   name: string;
   price: number;
+  variants?: Variant[];
 };
 
 type CartItem = {
   product: Product;
+  variantId: string | null;
+  variantLabel: string | null;
+  unitPrice: number;
   quantity: number;
 };
 
@@ -50,6 +60,54 @@ function distanceKm(a: Coordinates, b: Coordinates) {
     2 *
     Math.atan2(Math.sqrt(value), Math.sqrt(1 - value))
   );
+}
+
+// Migrate old cart entries (no variantId / unitPrice) → variant-aware shape
+function normalizeCartItem(raw: unknown): CartItem | null {
+  if (
+    raw === null ||
+    typeof raw !== "object" ||
+    !("product" in raw) ||
+    !("quantity" in raw)
+  ) {
+    return null;
+  }
+
+  const item = raw as {
+    product: Product;
+    quantity: number;
+    variantId?: string | null;
+    variantLabel?: string | null;
+    unitPrice?: number;
+  };
+
+  if (
+    typeof item.quantity !== "number" ||
+    item.quantity <= 0 ||
+    item.product === null ||
+    typeof item.product !== "object"
+  ) {
+    return null;
+  }
+
+  const variantId =
+    typeof item.variantId === "string" ? item.variantId : null;
+  const variantLabel =
+    typeof item.variantLabel === "string" ? item.variantLabel : null;
+  const unitPrice =
+    typeof item.unitPrice === "number" &&
+    Number.isFinite(item.unitPrice) &&
+    item.unitPrice > 0
+      ? item.unitPrice
+      : Number(item.product.price);
+
+  return {
+    product: item.product,
+    variantId,
+    variantLabel,
+    unitPrice,
+    quantity: item.quantity,
+  };
 }
 
 function GoBizLogo({ className = "" }: { className?: string }) {
@@ -109,7 +167,14 @@ export default function CheckoutPage() {
 
       if (savedCart) {
         const parsed: unknown = JSON.parse(savedCart);
-        if (Array.isArray(parsed)) setCart(parsed as CartItem[]);
+        if (Array.isArray(parsed)) {
+          const normalized: CartItem[] = [];
+          for (const raw of parsed) {
+            const item = normalizeCartItem(raw);
+            if (item) normalized.push(item);
+          }
+          setCart(normalized);
+        }
       }
 
       if (savedLocation) {
@@ -139,7 +204,7 @@ export default function CheckoutPage() {
   }, []);
 
   const subtotal = cart.reduce(
-    (total, item) => total + Number(item.product.price) * item.quantity,
+    (total, item) => total + Number(item.unitPrice) * item.quantity,
     0
   );
 
@@ -221,6 +286,7 @@ export default function CheckoutPage() {
           longitude: location.longitude,
           items: cart.map((item) => ({
             productId: String(item.product.id),
+            variantId: item.variantId,
             quantity: item.quantity,
           })),
         }),
@@ -306,8 +372,6 @@ export default function CheckoutPage() {
               href={DBC_URL}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Website designed by DBC.creatives"
-              title="Designed by DBC.creatives"
               className="inline-block text-[10px] text-neutral-400 transition hover:text-neutral-700 sm:text-xs"
             >
               Powered by <span className="font-semibold">DBC.creatives</span>
@@ -393,7 +457,9 @@ export default function CheckoutPage() {
                     disabled={checkingLocation}
                     className="mt-3 text-sm font-bold text-green-800 underline underline-offset-4 disabled:opacity-60"
                   >
-                    {checkingLocation ? "Checking location..." : "Refresh GPS location"}
+                    {checkingLocation
+                      ? "Checking location..."
+                      : "Refresh GPS location"}
                   </button>
                 </div>
               ) : (
@@ -550,7 +616,8 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-extrabold sm:text-xl">Your order</h2>
               <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-800">
-                {cart.reduce((count, item) => count + item.quantity, 0)} items
+                {cart.reduce((count, item) => count + item.quantity, 0)}{" "}
+                items
               </span>
             </div>
 
@@ -570,20 +637,25 @@ export default function CheckoutPage() {
               <div className="mt-5 space-y-4">
                 {cart.map((item) => (
                   <div
-                    key={item.product.id}
+                    key={`${item.product.id}::${item.variantId ?? "simple"}`}
                     className="flex justify-between gap-3 border-b border-neutral-100 pb-4"
                   >
                     <div className="min-w-0">
                       <p className="break-words text-sm font-semibold">
                         {item.product.name}
+                        {item.variantLabel && (
+                          <span className="ml-1 text-xs font-normal text-neutral-500">
+                            ({item.variantLabel})
+                          </span>
+                        )}
                       </p>
                       <p className="mt-1 text-xs text-neutral-500">
-                        Qty: {item.quantity}
+                        Qty: {item.quantity} × {formatPrice(item.unitPrice)}
                       </p>
                     </div>
 
                     <p className="shrink-0 text-sm font-bold">
-                      {formatPrice(item.product.price * item.quantity)}
+                      {formatPrice(item.unitPrice * item.quantity)}
                     </p>
                   </div>
                 ))}
@@ -602,7 +674,8 @@ export default function CheckoutPage() {
 
             <div className="mt-6 border-t border-neutral-100 pt-4">
               <p className="text-xs leading-5 text-neutral-500">
-                Fresh farm products and ready-made meals, brought closer to you.
+                Fresh farm products and ready-made meals, brought closer to
+                you.
               </p>
               <p className="mt-2 text-sm font-extrabold">
                 <GoBizLogo />
@@ -623,8 +696,6 @@ export default function CheckoutPage() {
             href={DBC_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Visit the DBC.creatives website"
-            title="Designed by DBC.creatives"
             className="rounded-full px-3 py-2 text-[10px] text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-800 sm:text-xs"
           >
             Powered by <span className="font-semibold">DBC.creatives</span>

@@ -6,6 +6,12 @@ export const dynamic = "force-dynamic";
 
 const sql = neon(process.env.DATABASE_URL!);
 
+type VariantInput = {
+  label: string;
+  price: number;
+  available?: boolean;
+};
+
 export async function GET() {
   try {
     const products = await sql.query(
@@ -30,7 +36,67 @@ export async function GET() {
        ORDER BY p.created_at DESC`
     );
 
-    return NextResponse.json({ products });
+    const productRows = products as Array<{
+      id: string;
+      name: string;
+      category: string;
+      price: number;
+      description: string;
+      imageUrl: string | null;
+    }>;
+
+    // Load variants for all returned products in one query
+    const productIds = productRows.map((p) => p.id);
+
+    let variantsByProduct: Record<
+      string,
+      Array<{
+        id: string;
+        label: string;
+        price: number;
+        available: boolean;
+        position: number;
+      }>
+    > = {};
+
+    if (productIds.length > 0) {
+      const variantRows = await sql.query(
+        `SELECT id, product_id, label, price_kes AS price, available, position
+         FROM public.product_variants
+         WHERE product_id = ANY($1::uuid[])
+         ORDER BY position ASC, created_at ASC`,
+        [productIds]
+      );
+
+      variantsByProduct = (variantRows as Array<{
+        id: string;
+        product_id: string;
+        label: string;
+        price: number;
+        available: boolean;
+        position: number;
+      }>).reduce(
+        (acc, v) => {
+          if (!acc[v.product_id]) acc[v.product_id] = [];
+          acc[v.product_id].push({
+            id: v.id,
+            label: v.label,
+            price: v.price,
+            available: v.available,
+            position: v.position,
+          });
+          return acc;
+        },
+        {} as typeof variantsByProduct
+      );
+    }
+
+    const productsWithVariants = productRows.map((p) => ({
+      ...p,
+      variants: variantsByProduct[p.id] ?? [],
+    }));
+
+    return NextResponse.json({ products: productsWithVariants });
   } catch (error) {
     console.error("Failed to load GoBiz products:", error);
 
@@ -121,6 +187,61 @@ export async function POST(request: Request) {
       }
     }
 
+    // Optional variants — if omitted or empty, product is simple (no variants).
+    const variantsInput = Array.isArray(body.variants) ? body.variants : [];
+
+    if (variantsInput.length > 20) {
+      return NextResponse.json(
+        { error: "A product can have at most 20 variants." },
+        { status: 400 }
+      );
+    }
+
+    const variants: VariantInput[] = [];
+
+    for (const raw of variantsInput) {
+      if (!raw || typeof raw !== "object") {
+        return NextResponse.json(
+          { error: "Each variant must be an object." },
+          { status: 400 }
+        );
+      }
+
+      const vLabel =
+        typeof (raw as Record<string, unknown>).label === "string"
+          ? ((raw as Record<string, unknown>).label as string).trim()
+          : "";
+      const vPrice = Number((raw as Record<string, unknown>).price);
+      const vAvailable =
+        (raw as Record<string, unknown>).available !== false;
+
+      if (
+        !vLabel ||
+        vLabel.length > 40 ||
+        !Number.isSafeInteger(vPrice) ||
+        vPrice <= 0
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Each variant needs a label (max 40 chars) and a whole-number price above 0.",
+          },
+          { status: 400 }
+        );
+      }
+
+      variants.push({ label: vLabel, price: vPrice, available: vAvailable });
+    }
+
+    // Reject duplicate labels within the same submission
+    const labels = variants.map((v) => v.label);
+    if (new Set(labels).size !== labels.length) {
+      return NextResponse.json(
+        { error: "Variant labels must be unique per product." },
+        { status: 400 }
+      );
+    }
+
     const categories = await sql.query(
       `SELECT id
        FROM public.categories
@@ -184,8 +305,48 @@ export async function POST(request: Request) {
       );
     }
 
+    // Insert variants if provided
+    let insertedVariants: Array<{
+      id: string;
+      label: string;
+      price: number;
+      available: boolean;
+      position: number;
+    }> = [];
+
+    if (variants.length > 0) {
+      const valuesSql = variants
+        .map(
+          (_v, i) =>
+            `($1, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4}, ${i})`
+        )
+        .join(", ");
+
+      const params: unknown[] = [product.id];
+      for (const v of variants) {
+        params.push(v.label, v.price, v.available ?? true);
+      }
+
+      const variantRows = await sql.query(
+        `INSERT INTO public.product_variants
+           (product_id, label, price_kes, available, position)
+         VALUES ${valuesSql}
+         RETURNING id, label, price_kes AS price, available, position`,
+        params
+      );
+
+      insertedVariants = variantRows as typeof insertedVariants;
+    }
+
     return NextResponse.json(
-      { product: { ...product, category, imageUrl: imageUrl || null } },
+      {
+        product: {
+          ...product,
+          category,
+          imageUrl: imageUrl || null,
+          variants: insertedVariants,
+        },
+      },
       { status: 201 }
     );
   } catch (error) {

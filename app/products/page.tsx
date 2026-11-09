@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import FeedbackWidget from "@/components/FeedbackWidget";
 
+type Variant = {
+  id: string;
+  label: string;
+  price: number;
+  available: boolean;
+  position?: number;
+};
+
 type Product = {
   id: number | string;
   name: string;
@@ -11,10 +19,14 @@ type Product = {
   price: number;
   description: string;
   imageUrl?: string | null;
+  variants?: Variant[];
 };
 
 type CartItem = {
   product: Product;
+  variantId: string | null;
+  variantLabel: string | null;
+  unitPrice: number;
   quantity: number;
 };
 
@@ -51,6 +63,10 @@ function normalizeSearchText(value: string) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, " ");
+}
+
+function cartLineKey(productId: number | string, variantId: string | null) {
+  return `${productId}::${variantId ?? "simple"}`;
 }
 
 function CartIcon() {
@@ -90,6 +106,27 @@ function SearchIcon() {
   );
 }
 
+function BinIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -106,6 +143,10 @@ export default function ProductsPage() {
   const [addedProduct, setAddedProduct] = useState("");
   const [addedNotice, setAddedNotice] = useState(false);
 
+  const [selectedVariant, setSelectedVariant] = useState<
+    Record<string, string>
+  >({});
+
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem(CART_STORAGE_KEY);
@@ -114,19 +155,50 @@ export default function ProductsPage() {
         const parsed: unknown = JSON.parse(savedCart);
 
         if (Array.isArray(parsed)) {
-          setCart(
-            parsed.filter(
-              (item): item is CartItem =>
-                item !== null &&
-                typeof item === "object" &&
-                "product" in item &&
-                "quantity" in item &&
-                typeof item.quantity === "number" &&
-                item.quantity > 0 &&
-                item.product !== null &&
-                typeof item.product === "object"
-            )
-          );
+          const normalized: CartItem[] = [];
+
+          for (const raw of parsed) {
+            if (
+              raw === null ||
+              typeof raw !== "object" ||
+              !("product" in raw) ||
+              !("quantity" in raw) ||
+              typeof (raw as CartItem).quantity !== "number" ||
+              (raw as CartItem).quantity <= 0 ||
+              (raw as CartItem).product === null ||
+              typeof (raw as CartItem).product !== "object"
+            ) {
+              continue;
+            }
+
+            const item = raw as Partial<CartItem> & {
+              product: Product;
+              quantity: number;
+            };
+
+            const variantId =
+              typeof item.variantId === "string" ? item.variantId : null;
+            const variantLabel =
+              typeof item.variantLabel === "string"
+                ? item.variantLabel
+                : null;
+            const unitPrice =
+              typeof item.unitPrice === "number" &&
+              Number.isFinite(item.unitPrice) &&
+              item.unitPrice > 0
+                ? item.unitPrice
+                : Number(item.product.price);
+
+            normalized.push({
+              product: item.product,
+              variantId,
+              variantLabel,
+              unitPrice,
+              quantity: item.quantity,
+            });
+          }
+
+          setCart(normalized);
         }
       }
 
@@ -211,22 +283,51 @@ export default function ProductsPage() {
               Number.isFinite(Number(item.price)) &&
               Number(item.price) >= 0
           )
-          .map((item) => ({
-            id: item.id as number | string,
-            name: item.name as string,
-            category: item.category as "READY_MADE" | "FARM",
-            price: Number(item.price),
-            description:
-              typeof item.description === "string"
-                ? item.description
-                : "",
-            imageUrl:
-              typeof item.imageUrl === "string"
-                ? item.imageUrl
-                : typeof item.image_url === "string"
-                  ? item.image_url
-                  : null,
-          }));
+          .map((item) => {
+            const rawVariants = Array.isArray(item.variants)
+              ? (item.variants as unknown[])
+              : [];
+
+            const variants: Variant[] = rawVariants
+              .filter(
+                (v): v is Record<string, unknown> =>
+                  typeof v === "object" && v !== null
+              )
+              .filter(
+                (v) =>
+                  typeof v.id === "string" &&
+                  typeof v.label === "string" &&
+                  Number.isFinite(Number(v.price)) &&
+                  Number(v.price) > 0
+              )
+              .map((v) => ({
+                id: v.id as string,
+                label: v.label as string,
+                price: Number(v.price),
+                available: v.available !== false,
+                position:
+                  typeof v.position === "number" ? v.position : 0,
+              }))
+              .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+            return {
+              id: item.id as number | string,
+              name: item.name as string,
+              category: item.category as "READY_MADE" | "FARM",
+              price: Number(item.price),
+              description:
+                typeof item.description === "string"
+                  ? item.description
+                  : "",
+              imageUrl:
+                typeof item.imageUrl === "string"
+                  ? item.imageUrl
+                  : typeof item.image_url === "string"
+                    ? item.image_url
+                    : null,
+              variants,
+            };
+          });
 
         setProducts(validProducts);
       } catch (error) {
@@ -292,33 +393,85 @@ export default function ProductsPage() {
     );
   }
 
-  function addToCart(product: Product) {
+  function resolveUnit(
+    product: Product,
+    variantId: string | null
+  ): { variantId: string | null; variantLabel: string | null; unitPrice: number } {
+    if (variantId) {
+      const variant = product.variants?.find((v) => v.id === variantId);
+      if (variant) {
+        return {
+          variantId: variant.id,
+          variantLabel: variant.label,
+          unitPrice: variant.price,
+        };
+      }
+    }
+
+    return {
+      variantId: null,
+      variantLabel: null,
+      unitPrice: Number(product.price),
+    };
+  }
+
+  function addToCart(product: Product, variantId?: string | null) {
+    const chosenVariantId =
+      variantId ??
+      (product.variants && product.variants.length > 0
+        ? selectedVariant[String(product.id)] ??
+          product.variants[0].id
+        : null);
+
+    const { variantId: vid, variantLabel, unitPrice } = resolveUnit(
+      product,
+      chosenVariantId
+    );
+
     setCart((current) => {
       const existing = current.find(
-        (item) => String(item.product.id) === String(product.id)
+        (item) =>
+          String(item.product.id) === String(product.id) &&
+          (item.variantId ?? null) === vid
       );
 
       if (existing) {
         return current.map((item) =>
-          String(item.product.id) === String(product.id)
+          item === existing
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
 
-      return [...current, { product, quantity: 1 }];
+      return [
+        ...current,
+        {
+          product,
+          variantId: vid,
+          variantLabel,
+          unitPrice,
+          quantity: 1,
+        },
+      ];
     });
 
-    setAddedProduct(product.name);
+    setAddedProduct(
+      variantLabel ? `${product.name} (${variantLabel})` : product.name
+    );
     setAddedNotice(true);
     window.setTimeout(() => setAddedNotice(false), 2200);
   }
 
-  function changeQuantity(id: number | string, amount: number) {
+  function changeQuantity(
+    productId: number | string,
+    variantId: string | null,
+    amount: number
+  ) {
     setCart((current) =>
       current
         .map((item) =>
-          String(item.product.id) === String(id)
+          String(item.product.id) === String(productId) &&
+          (item.variantId ?? null) === (variantId ?? null)
             ? { ...item, quantity: item.quantity + amount }
             : item
         )
@@ -326,10 +479,17 @@ export default function ProductsPage() {
     );
   }
 
-  function removeFromCart(id: number | string) {
+  function removeFromCart(
+    productId: number | string,
+    variantId: string | null
+  ) {
     setCart((current) =>
       current.filter(
-        (item) => String(item.product.id) !== String(id)
+        (item) =>
+          !(
+            String(item.product.id) === String(productId) &&
+            (item.variantId ?? null) === (variantId ?? null)
+          )
       )
     );
   }
@@ -341,6 +501,28 @@ export default function ProductsPage() {
 
   function goToCheckout() {
     if (cart.length === 0) return;
+
+    try {
+      localStorage.setItem(
+        CART_STORAGE_KEY,
+        JSON.stringify(
+          cart.map((item) => ({
+            product: {
+              id: item.product.id,
+              name: item.product.name,
+              category: item.product.category,
+              price: item.product.price,
+            },
+            variantId: item.variantId,
+            variantLabel: item.variantLabel,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+          }))
+        )
+      );
+    } catch {
+      // ignore
+    }
 
     setCartOpen(false);
     window.location.href = "/checkout";
@@ -368,14 +550,14 @@ export default function ProductsPage() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const subtotal = cart.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => sum + item.unitPrice * item.quantity,
     0
   );
 
   return (
     <>
       <main className="flex min-h-screen flex-col bg-white text-neutral-900">
-        {/* HEADER — GoBiz wordmark + search + trolley cart. NO HAMBURGER. */}
+        {/* HEADER */}
         <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
             <Link href="/" className="shrink-0">
@@ -414,7 +596,6 @@ export default function ProductsPage() {
             </button>
           </div>
 
-          {/* Mobile search */}
           <div className="px-4 pb-3 sm:hidden">
             <div className="relative">
               <SearchIcon />
@@ -432,7 +613,7 @@ export default function ProductsPage() {
           </div>
         </header>
 
-        {/* HERO — big bold GoBiz, tight supporting text */}
+        {/* HERO */}
         <section className="relative overflow-hidden bg-gradient-to-br from-green-950 via-green-900 to-red-950">
           <div
             aria-hidden="true"
@@ -441,14 +622,6 @@ export default function ProductsPage() {
           <div
             aria-hidden="true"
             className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-green-500/25 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-overlay"
-            style={{
-              backgroundImage:
-                "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-            }}
           />
 
           <div className="relative mx-auto max-w-7xl px-5 py-14 text-left sm:px-8 sm:py-20 md:py-24">
@@ -528,15 +701,42 @@ export default function ProductsPage() {
             <>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {visibleProducts.map((product) => {
-                  const cartItem = cart.find(
+                  const hasVariants =
+                    (product.variants?.length ?? 0) > 0;
+
+                  const activeVariantId = hasVariants
+                    ? selectedVariant[String(product.id)] ??
+                      product.variants![0].id
+                    : null;
+
+                  const activeVariant = hasVariants
+                    ? product.variants!.find(
+                        (v) => v.id === activeVariantId
+                      ) ?? product.variants![0]
+                    : null;
+
+                  const displayPrice = activeVariant
+                    ? activeVariant.price
+                    : product.price;
+
+                  const productQty = cart
+                    .filter(
+                      (item) =>
+                        String(item.product.id) === String(product.id)
+                    )
+                    .reduce((sum, item) => sum + item.quantity, 0);
+
+                  const lineInCart = cart.find(
                     (item) =>
-                      String(item.product.id) === String(product.id)
+                      String(item.product.id) === String(product.id) &&
+                      (item.variantId ?? null) ===
+                        (activeVariant?.id ?? null)
                   );
 
                   return (
                     <article
                       key={product.id}
-                      className="overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:shadow-lg sm:rounded-2xl"
+                      className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:shadow-lg sm:rounded-2xl"
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
                         {product.imageUrl ? (
@@ -560,41 +760,108 @@ export default function ProductsPage() {
                         )}
                       </div>
 
-                      <div className="p-2 sm:p-4">
+                      <div className="flex flex-1 flex-col p-2 sm:p-4">
                         <h3 className="break-words text-xs font-bold leading-snug sm:text-base">
                           {product.name}
                         </h3>
                         <p className="mt-1 line-clamp-2 min-h-7 text-[10px] leading-4 text-neutral-500 sm:min-h-10 sm:text-xs sm:leading-5">
                           {product.description || "Available from GoBiz."}
                         </p>
+
+                        {hasVariants && (
+                          <div className="mt-2 flex flex-wrap gap-1 sm:mt-3 sm:gap-1.5">
+                            {product.variants!.map((v) => {
+                              const isActive = v.id === activeVariantId;
+                              return (
+                                <button
+                                  key={v.id}
+                                  type="button"
+                                  disabled={!v.available}
+                                  onClick={() =>
+                                    setSelectedVariant((current) => ({
+                                      ...current,
+                                      [String(product.id)]: v.id,
+                                    }))
+                                  }
+                                  className={`rounded-full border px-2 py-1 text-[10px] font-bold transition sm:text-xs ${
+                                    isActive
+                                      ? "border-green-800 bg-green-800 text-white"
+                                      : "border-neutral-300 bg-white text-neutral-700 hover:border-green-600 hover:bg-green-50"
+                                  } ${!v.available ? "cursor-not-allowed opacity-40" : ""}`}
+                                >
+                                  {v.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         <p className="mt-2 break-words text-xs font-extrabold sm:mt-3 sm:text-lg">
-                          {formatPrice(product.price)}
+                          {formatPrice(displayPrice)}
                         </p>
 
-                        {cartItem ? (
+                        {lineInCart ? (
                           <div className="mt-2 flex items-center gap-1.5 sm:mt-3 sm:gap-2">
-                            <span className="flex min-h-9 flex-1 items-center justify-center rounded-full bg-red-700 px-1.5 py-2 text-[10px] font-bold text-white sm:text-sm">
-                              Added
-                            </span>
+                            <button
+                              onClick={() =>
+                                changeQuantity(
+                                  product.id,
+                                  activeVariant?.id ?? null,
+                                  -1
+                                )
+                              }
+                              aria-label={`Remove one ${product.name}`}
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white text-lg font-bold text-neutral-800 transition hover:bg-neutral-100"
+                            >
+                              −
+                            </button>
 
-                            <span className="flex h-9 min-w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2 text-xs font-extrabold text-red-800">
-                              {cartItem.quantity}
+                            <span className="flex h-9 min-w-8 items-center justify-center rounded-full border border-green-200 bg-green-50 px-2 text-xs font-extrabold text-green-800">
+                              {lineInCart.quantity}
                             </span>
 
                             <button
-                              onClick={() => addToCart(product)}
+                              onClick={() =>
+                                addToCart(
+                                  product,
+                                  activeVariant?.id ?? null
+                                )
+                              }
                               aria-label={`Add another ${product.name}`}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-800 text-xl font-bold text-white hover:bg-green-900"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-800 text-lg font-bold text-white transition hover:bg-green-900"
                             >
                               +
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                removeFromCart(
+                                  product.id,
+                                  activeVariant?.id ?? null
+                                )
+                              }
+                              aria-label={`Remove ${product.name} from cart`}
+                              className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100 hover:text-red-800"
+                            >
+                              <BinIcon />
                             </button>
                           </div>
                         ) : (
                           <button
-                            onClick={() => addToCart(product)}
-                            className="mt-2 w-full rounded-full bg-green-800 px-1.5 py-2 text-[10px] font-bold text-white hover:bg-green-900 sm:mt-3 sm:px-3 sm:py-2.5 sm:text-sm"
+                            onClick={() =>
+                              addToCart(
+                                product,
+                                activeVariant?.id ?? null
+                              )
+                            }
+                            disabled={
+                              !!activeVariant && !activeVariant.available
+                            }
+                            className="mt-2 w-full rounded-full bg-green-800 px-1.5 py-2 text-[10px] font-bold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-neutral-300 sm:mt-3 sm:px-3 sm:py-2.5 sm:text-sm"
                           >
-                            Add to cart
+                            {productQty > 0
+                              ? "Add to cart again"
+                              : "Add to cart"}
                           </button>
                         )}
                       </div>
@@ -632,7 +899,7 @@ export default function ProductsPage() {
           )}
         </section>
 
-        {/* FOOTER — dark, last element on page */}
+        {/* FOOTER */}
         <footer className="mt-auto bg-neutral-950 text-white">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:grid-cols-3 sm:px-6">
             <div>
@@ -739,13 +1006,18 @@ export default function ProductsPage() {
                   <div className="space-y-3">
                     {cart.map((item) => (
                       <div
-                        key={item.product.id}
+                        key={cartLineKey(item.product.id, item.variantId)}
                         className="flex flex-col gap-3 rounded-2xl border border-green-200 bg-green-50/50 p-4 shadow-sm"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <h3 className="break-words font-bold text-neutral-900">
                               {item.product.name}
+                              {item.variantLabel && (
+                                <span className="ml-1 text-xs font-semibold text-neutral-500">
+                                  ({item.variantLabel})
+                                </span>
+                              )}
                             </h3>
                             <p className="mt-1 text-xs text-neutral-500">
                               {item.product.category === "FARM"
@@ -753,13 +1025,13 @@ export default function ProductsPage() {
                                 : "Ready-made meal"}
                             </p>
                             <p className="mt-1 text-sm text-neutral-500">
-                              {formatPrice(item.product.price)} each
+                              {formatPrice(item.unitPrice)} each
                             </p>
                           </div>
 
                           <p className="shrink-0 font-extrabold text-green-900">
                             {formatPrice(
-                              item.product.price * item.quantity
+                              item.unitPrice * item.quantity
                             )}
                           </p>
                         </div>
@@ -768,7 +1040,11 @@ export default function ProductsPage() {
                           <div className="flex items-center gap-3 rounded-full border border-neutral-200 bg-white p-1">
                             <button
                               onClick={() =>
-                                changeQuantity(item.product.id, -1)
+                                changeQuantity(
+                                  item.product.id,
+                                  item.variantId,
+                                  -1
+                                )
                               }
                               aria-label={`Remove one ${item.product.name}`}
                               className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 text-lg font-bold text-neutral-800 hover:bg-neutral-100"
@@ -782,7 +1058,11 @@ export default function ProductsPage() {
 
                             <button
                               onClick={() =>
-                                changeQuantity(item.product.id, 1)
+                                changeQuantity(
+                                  item.product.id,
+                                  item.variantId,
+                                  1
+                                )
                               }
                               aria-label={`Add one ${item.product.name}`}
                               className="flex h-8 w-8 items-center justify-center rounded-full bg-green-800 text-lg font-bold text-white hover:bg-green-900"
@@ -792,7 +1072,12 @@ export default function ProductsPage() {
                           </div>
 
                           <button
-                            onClick={() => removeFromCart(item.product.id)}
+                            onClick={() =>
+                              removeFromCart(
+                                item.product.id,
+                                item.variantId
+                              )
+                            }
                             className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100"
                           >
                             Remove item

@@ -1,4 +1,3 @@
-
 import { randomUUID } from "crypto";
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
@@ -8,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 type OrderItemInput = {
   productId: string;
+  variantId?: string | null;
   quantity: number;
 };
 
@@ -35,6 +35,9 @@ type DbOrderStatus =
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "CANCELLED";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function distanceKm(
   lat1: number,
@@ -64,7 +67,6 @@ function validCoordinate(value: unknown, min: number, max: number) {
   );
 }
 
-/* GET: Fetch orders, customer details, items, and GPS coordinates. */
 export async function GET() {
   try {
     const rows = await sql`
@@ -88,6 +90,7 @@ export async function GET() {
           json_agg(
             json_build_object(
               'name', oi.product_name,
+              'variantLabel', oi.variant_label,
               'quantity', oi.quantity,
               'unitPrice', oi.unit_price_kes,
               'lineTotal', oi.line_total_kes
@@ -145,7 +148,6 @@ export async function GET() {
   }
 }
 
-/* PATCH: Update order status using the database's allowed statuses. */
 export async function PATCH(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -214,7 +216,6 @@ export async function PATCH(request: Request) {
   }
 }
 
-/* POST: Validate and create an order, its items, payment, and event. */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OrderRequest;
@@ -279,14 +280,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const productIds = new Set<string>();
+    const seen = new Set<string>();
 
     for (const item of items) {
       if (
         typeof item.productId !== "string" ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          item.productId
-        ) ||
+        !UUID_RE.test(item.productId) ||
         !Number.isInteger(item.quantity) ||
         item.quantity < 1 ||
         item.quantity > 100
@@ -297,14 +296,26 @@ export async function POST(request: Request) {
         );
       }
 
-      if (productIds.has(item.productId)) {
+      if (
+        item.variantId !== undefined &&
+        item.variantId !== null &&
+        (typeof item.variantId !== "string" ||
+          !UUID_RE.test(item.variantId))
+      ) {
+        return NextResponse.json(
+          { error: "One or more cart items have an invalid variant." },
+          { status: 400 }
+        );
+      }
+
+      const key = `${item.productId}::${item.variantId ?? "simple"}`;
+      if (seen.has(key)) {
         return NextResponse.json(
           { error: "Duplicate cart items are not allowed." },
           { status: 400 }
         );
       }
-
-      productIds.add(item.productId);
+      seen.add(key);
     }
 
     const fulfillmentMethod = body.fulfillmentMethod;
@@ -379,6 +390,7 @@ export async function POST(request: Request) {
     const longitude =
       fulfillmentMethod === "DELIVERY" ? body.longitude! : null;
 
+    // 1. Fetch products
     const productRows = await sql`
       SELECT
         p.id::text AS id,
@@ -396,7 +408,7 @@ export async function POST(request: Request) {
       AND c.active = true
     `;
 
-    if (productRows.length !== items.length) {
+    if (productRows.length !== new Set(items.map((i) => i.productId)).size) {
       return NextResponse.json(
         {
           error:
@@ -416,6 +428,56 @@ export async function POST(request: Request) {
       ])
     );
 
+    // 2. Fetch variants (only for items that reference one)
+    const variantIds = items
+      .map((i) => i.variantId)
+      .filter((v): v is string => typeof v === "string");
+
+    const variantMap = new Map<
+      string,
+      { id: string; productId: string; label: string; price: number; available: boolean }
+    >();
+
+    if (variantIds.length > 0) {
+      const variantRows = await sql`
+        SELECT
+          v.id::text AS id,
+          v.product_id::text AS "productId",
+          v.label,
+          v.price_kes,
+          v.available
+        FROM public.product_variants v
+        WHERE v.id IN (
+          SELECT (x->>'variantId')::uuid
+          FROM jsonb_array_elements(
+            ${JSON.stringify(items.map((i) => ({ variantId: i.variantId })))}::jsonb
+          ) AS x
+          WHERE x->>'variantId' IS NOT NULL
+        )
+      `;
+
+      for (const v of variantRows) {
+        variantMap.set(String(v.id), {
+          id: String(v.id),
+          productId: String(v.productId),
+          label: String(v.label),
+          price: Number(v.price_kes),
+          available: Boolean(v.available),
+        });
+      }
+    }
+
+    // 3. Compute subtotal + per-line price & variant label
+    type ResolvedLine = {
+      productId: string;
+      productName: string;
+      variantId: string | null;
+      variantLabel: string | null;
+      unitPrice: number;
+      quantity: number;
+    };
+
+    const resolvedLines: ResolvedLine[] = [];
     let subtotal = 0;
 
     for (const item of items) {
@@ -432,7 +494,33 @@ export async function POST(request: Request) {
         );
       }
 
-      subtotal += product.price * item.quantity;
+      let unitPrice = product.price;
+      let variantLabel: string | null = null;
+
+      if (typeof item.variantId === "string") {
+        const variant = variantMap.get(item.variantId);
+
+        if (
+          !variant ||
+          variant.productId !== item.productId ||
+          !variant.available ||
+          !Number.isSafeInteger(variant.price) ||
+          variant.price <= 0
+        ) {
+          return NextResponse.json(
+            {
+              error:
+                "A variant in your cart is unavailable. Refresh the marketplace and try again.",
+            },
+            { status: 409 }
+          );
+        }
+
+        unitPrice = variant.price;
+        variantLabel = variant.label;
+      }
+
+      subtotal += unitPrice * item.quantity;
 
       if (!Number.isSafeInteger(subtotal)) {
         return NextResponse.json(
@@ -440,6 +528,15 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+
+      resolvedLines.push({
+        productId: item.productId,
+        productName: product.name,
+        variantId: typeof item.variantId === "string" ? item.variantId : null,
+        variantLabel,
+        unitPrice,
+        quantity: item.quantity,
+      });
     }
 
     let deliveryFee = 0;
@@ -480,10 +577,7 @@ export async function POST(request: Request) {
 
       if (distance > Number(setting.radius_km)) {
         return NextResponse.json(
-          {
-            error:
-              "Your GPS location is outside the GoBiz delivery area.",
-          },
+          { error: "Your GPS location is outside the GoBiz delivery area." },
           { status: 422 }
         );
       }
@@ -492,17 +586,14 @@ export async function POST(request: Request) {
         case "FREE":
           deliveryFee = 0;
           break;
-
         case "FIXED":
           deliveryFee = Number(setting.fixed_fee_kes);
           break;
-
         case "PERCENTAGE":
           deliveryFee = Math.round(
             subtotal * (Number(setting.fee_percentage) / 100)
           );
           break;
-
         default:
           return NextResponse.json(
             { error: "GoBiz delivery settings are invalid." },
@@ -532,65 +623,32 @@ export async function POST(request: Request) {
         .slice(0, 6)
         .toUpperCase()}`;
 
+    // 4. Insert everything transactionally (single SQL statement)
     const result = await sql`
       WITH customer_insert AS (
         INSERT INTO public.customers (name, phone, email)
         SELECT ${name}, ${phone}, ${email}
         WHERE NOT EXISTS (
-          SELECT 1
-          FROM public.customers
-          WHERE phone = ${phone}
+          SELECT 1 FROM public.customers WHERE phone = ${phone}
         )
         RETURNING id
       ),
       customer_row AS (
         SELECT id FROM customer_insert
         UNION ALL
-        SELECT id
-        FROM public.customers
-        WHERE phone = ${phone}
+        SELECT id FROM public.customers WHERE phone = ${phone}
         LIMIT 1
-      ),
-      valid_products AS (
-        SELECT
-          p.id,
-          p.name,
-          p.price_kes,
-          cart.quantity
-        FROM jsonb_to_recordset(
-          ${JSON.stringify(items)}::jsonb
-        ) AS cart("productId" uuid, quantity integer)
-        JOIN public.products p
-          ON p.id = cart."productId"
-         AND p.available = true
-        JOIN public.categories c
-          ON c.id = p.category_id
-         AND c.active = true
       ),
       order_insert AS (
         INSERT INTO public.customer_orders (
-          order_number,
-          customer_id,
-          status,
-          fulfillment_method,
-          subtotal_kes,
-          delivery_fee_kes,
-          total_kes,
-          delivery_address,
-          building_name,
-          floor,
-          delivery_notes,
-          latitude,
-          longitude
+          order_number, customer_id, status, fulfillment_method,
+          subtotal_kes, delivery_fee_kes, total_kes,
+          delivery_address, building_name, floor, delivery_notes,
+          latitude, longitude
         )
         SELECT
-          ${orderNumber},
-          customer_row.id,
-          'PENDING',
-          ${fulfillmentMethod},
-          ${subtotal},
-          ${deliveryFee},
-          ${total},
+          ${orderNumber}, customer_row.id, 'PENDING', ${fulfillmentMethod},
+          ${subtotal}, ${deliveryFee}, ${total},
           ${fulfillmentMethod === "DELIVERY" ? deliveryAddress : null}::text,
           ${fulfillmentMethod === "DELIVERY" ? buildingName : null}::text,
           ${fulfillmentMethod === "DELIVERY" ? floor : null}::text,
@@ -598,50 +656,35 @@ export async function POST(request: Request) {
           ${latitude}::double precision,
           ${longitude}::double precision
         FROM customer_row
-        WHERE (SELECT COUNT(*) FROM valid_products) = ${items.length}
         RETURNING id, order_number, total_kes, created_at
       ),
-      item_insert AS (
+      line_insert AS (
         INSERT INTO public.order_items (
-          order_id,
-          product_id,
-          product_name,
-          quantity,
-          unit_price_kes,
-          line_total_kes
+          order_id, product_id, product_name, variant_id, variant_label,
+          quantity, unit_price_kes, line_total_kes
         )
         SELECT
           order_insert.id,
-          valid_products.id,
-          valid_products.name,
-          valid_products.quantity,
-          valid_products.price_kes,
-          valid_products.price_kes * valid_products.quantity
+          (line->>'productId')::uuid,
+          line->>'productName',
+          CASE WHEN line->>'variantId' IS NULL THEN NULL
+               ELSE (line->>'variantId')::uuid END,
+          line->>'variantLabel',
+          (line->>'quantity')::integer,
+          (line->>'unitPrice')::integer,
+          (line->>'unitPrice')::integer * (line->>'quantity')::integer
         FROM order_insert
-        CROSS JOIN valid_products
+        CROSS JOIN jsonb_array_elements(${JSON.stringify(resolvedLines)}::jsonb) AS line
         RETURNING id
       ),
       payment_insert AS (
-        INSERT INTO public.payments (
-          order_id,
-          method,
-          status,
-          amount_kes
-        )
-        SELECT
-          id,
-          'CASH_ON_DELIVERY',
-          'PENDING',
-          total_kes
+        INSERT INTO public.payments (order_id, method, status, amount_kes)
+        SELECT id, 'CASH_ON_DELIVERY', 'PENDING', total_kes
         FROM order_insert
         RETURNING id
       ),
       event_insert AS (
-        INSERT INTO public.order_events (
-          order_id,
-          event_type,
-          details
-        )
+        INSERT INTO public.order_events (order_id, event_type, details)
         SELECT
           id,
           'ORDER_PLACED',
@@ -657,7 +700,7 @@ export async function POST(request: Request) {
         order_insert.order_number,
         order_insert.total_kes,
         order_insert.created_at,
-        (SELECT COUNT(*) FROM item_insert) AS item_count,
+        (SELECT COUNT(*) FROM line_insert) AS line_count,
         (SELECT COUNT(*) FROM payment_insert) AS payment_count,
         (SELECT COUNT(*) FROM event_insert) AS event_count
       FROM order_insert
@@ -667,7 +710,7 @@ export async function POST(request: Request) {
 
     if (
       !created ||
-      Number(created.item_count) !== items.length ||
+      Number(created.line_count) !== resolvedLines.length ||
       Number(created.payment_count) !== 1 ||
       Number(created.event_count) !== 1
     ) {
