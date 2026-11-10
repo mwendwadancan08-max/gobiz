@@ -36,8 +36,6 @@ const SERVICE_LAT = -0.6974717835542885;
 const SERVICE_LNG = 34.78543150783463;
 const DELIVERY_RADIUS_KM = 5;
 
-const DBC_URL = "https://dbc-pi-two.vercel.app/";
-
 function formatPrice(value: number) {
   return `KSh ${value.toLocaleString("en-KE")}`;
 }
@@ -368,13 +366,16 @@ export default function CheckoutPage() {
           </a>
 
           <footer className="mt-8 border-t border-neutral-100 pt-4">
+            <p className="text-[10px] text-neutral-500">
+              GoBiz · Owned by Gerald Mwai · Managed by the GoBiz team
+            </p>
             <a
-              href={DBC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block text-[10px] text-neutral-400 transition hover:text-neutral-700 sm:text-xs"
+              href="mailto:dbc.techfirm@gmail.com"
+              aria-label="Website designed and maintained by DBC.Africa"
+              title="Designed & maintained by DBC.Africa"
+              className="mt-1 inline-block text-[10px] text-neutral-300 underline-offset-4 transition hover:text-neutral-700 hover:underline focus:text-neutral-700 focus:outline-none sm:text-xs"
             >
-              Powered by <span className="font-semibold">DBC.creatives</span>
+              Designed &amp; maintained by DBC.Africa
             </a>
           </footer>
         </section>
@@ -411,7 +412,7 @@ export default function CheckoutPage() {
         </header>
 
         <a
-          href="/"
+          href="/products"
           className="mt-4 inline-block text-sm font-semibold text-green-800 transition hover:text-red-600"
         >
           ← Back to marketplace
@@ -627,7 +628,7 @@ export default function CheckoutPage() {
                   Your cart is empty.
                 </p>
                 <a
-                  href="/"
+                  href="/products"
                   className="mt-4 inline-block text-sm font-bold text-green-800 underline underline-offset-4"
                 >
                   Browse products
@@ -687,18 +688,21 @@ export default function CheckoutPage() {
           </aside>
         </div>
 
-        <footer className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-neutral-200 py-5 sm:flex-row">
-          <p className="text-xs text-neutral-500">
+        <footer className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-neutral-200 py-5 sm:flex-row">
+          <p className="text-center text-xs text-neutral-500 sm:text-left">
             © {new Date().getFullYear()} <GoBizLogo />. All rights reserved.
+            <span className="mt-1 block text-[11px] text-neutral-400">
+              Owned by Gerald Mwai · Managed by the GoBiz team
+            </span>
           </p>
 
           <a
-            href={DBC_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full px-3 py-2 text-[10px] text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-800 sm:text-xs"
+            href="mailto:dbc.techfirm@gmail.com"
+            aria-label="Website designed and maintained by DBC.Africa"
+            title="Designed & maintained by DBC.Africa"
+            className="rounded-full px-3 py-2 text-[10px] text-neutral-300 underline-offset-4 transition hover:bg-neutral-100 hover:text-neutral-700 hover:underline focus:text-neutral-700 focus:outline-none sm:text-xs"
           >
-            Powered by <span className="font-semibold">DBC.creatives</span>
+            Designed &amp; maintained by <span className="font-semibold">DBC.Africa</span>
           </a>
         </footer>
       </div>

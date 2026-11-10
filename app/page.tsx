@@ -200,15 +200,17 @@ export default function WelcomePage() {
           <footer className="mt-6 text-center text-[11px] text-white/50">
             <span>GoBiz</span>
             <span className="mx-2 text-white/25">•</span>
-            <span>Meals and farm products</span>
+            <span>Owned by Gerald Mwai</span>
+            <span className="mx-2 text-white/25">•</span>
+            <span>Managed by the GoBiz team</span>
             <span className="mx-2 text-white/25">•</span>
             <a
-              href="https://dbc-pi-two.vercel.app"
-              target="_blank"
-              rel="noreferrer"
-              className="underline decoration-white/30 underline-offset-4 transition hover:text-white"
+              href="mailto:dbc.techfirm@gmail.com"
+              aria-label="Website designed and maintained by DBC.Africa"
+              title="Designed & maintained by DBC.Africa"
+              className="text-white/30 underline decoration-white/10 underline-offset-4 transition hover:text-white/80 hover:decoration-white/40 focus:text-white focus:outline-none"
             >
-              DBC.creatives
+              DBC.Africa
             </a>
           </footer>
         </div>

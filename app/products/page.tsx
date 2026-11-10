@@ -557,7 +557,6 @@ export default function ProductsPage() {
   return (
     <>
       <main className="flex min-h-screen flex-col bg-white text-neutral-900">
-        {/* HEADER */}
         <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
             <Link href="/" className="shrink-0">
@@ -613,7 +612,6 @@ export default function ProductsPage() {
           </div>
         </header>
 
-        {/* HERO */}
         <section className="relative overflow-hidden bg-gradient-to-br from-green-950 via-green-900 to-red-950">
           <div
             aria-hidden="true"
@@ -645,7 +643,6 @@ export default function ProductsPage() {
           </div>
         </section>
 
-        {/* PRODUCTS */}
         <section className="mx-auto w-full max-w-7xl flex-1 px-3 py-8 sm:px-6 sm:py-12">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
@@ -899,7 +896,6 @@ export default function ProductsPage() {
           )}
         </section>
 
-        {/* FOOTER */}
         <footer className="mt-auto bg-neutral-950 text-white">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:grid-cols-3 sm:px-6">
             <div>
@@ -952,17 +948,30 @@ export default function ProductsPage() {
                   254gobiz@gmail.com
                 </a>
               </p>
+              <p className="mt-4 text-xs leading-5 text-neutral-500">
+                Owned by{" "}
+                <span className="font-semibold text-neutral-300">
+                  Gerald Mwai
+                </span>
+                {" · "}
+                Managed by the{" "}
+                <span className="font-semibold text-neutral-300">
+                  GoBiz team
+                </span>
+              </p>
               <a
-                href="https://dbc-pi-two.vercel.app"
-                className="mt-4 inline-block text-xs text-red-300 hover:text-red-200"
+                href="mailto:dbc.techfirm@gmail.com"
+                aria-label="Website designed and maintained by DBC.Africa"
+                title="Designed & maintained by DBC.Africa"
+                className="mt-3 inline-block text-xs text-neutral-500 opacity-40 transition hover:text-red-300 hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-300"
               >
-                Powered by DBC.creatives
+                Designed &amp; maintained by{" "}
+                <span className="font-semibold">DBC.Africa</span>
               </a>
             </div>
           </div>
         </footer>
 
-        {/* Cart drawer */}
         {cartOpen && (
           <div
             className="fixed inset-0 z-[70] bg-black/50"
@@ -1118,7 +1127,6 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Location modal */}
         {locationOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
             <section className="w-full max-w-md overflow-hidden rounded-3xl border border-green-100 bg-white shadow-2xl">
@@ -1170,7 +1178,6 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Added-to-cart toast */}
         {addedNotice && (
           <div
             role="status"

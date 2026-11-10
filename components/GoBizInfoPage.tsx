@@ -121,16 +121,169 @@ function MailIcon() {
   );
 }
 
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function TeamIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function CodeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </svg>
+  );
+}
+
 /* ---------- body renderers per slug ---------- */
 
 function AboutBody({ paragraphs }: { paragraphs: readonly string[] }) {
+  const pillars = [
+    {
+      label: "One marketplace",
+      text: paragraphs[0] ?? "",
+      gradient: "from-green-800 to-green-600",
+    },
+    {
+      label: "Convenience first",
+      text: paragraphs[1] ?? "",
+      gradient: "from-red-800 to-red-600",
+    },
+    {
+      label: "Real connections",
+      text: paragraphs[2] ?? "",
+      gradient: "from-neutral-900 to-neutral-700",
+    },
+  ];
+
   return (
-    <div className="space-y-5">
-      {paragraphs.map((p) => (
-        <p key={p} className="text-[15px] leading-7 text-neutral-700">
-          {p}
+    <div className="space-y-8">
+      {/* Intro */}
+      <p className="text-[15px] leading-7 text-neutral-700">
+        GoBiz is a Kenyan food marketplace that combines prepared meals from
+        local sellers with fresh produce from verified farms — one cart, one
+        checkout, one delivery to your door.
+      </p>
+
+      {/* Pillars */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {pillars.map((pillar, i) => (
+          <div
+            key={pillar.label}
+            className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-green-200 hover:shadow-md"
+          >
+            <span
+              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${pillar.gradient} text-xs font-extrabold text-white shadow-md`}
+            >
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <p className="mt-3 text-xs font-bold uppercase tracking-widest text-neutral-500">
+              {pillar.label}
+            </p>
+            <p className="mt-2 text-[14px] leading-6 text-neutral-700">
+              {pillar.text}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Ownership section */}
+      <div className="rounded-2xl border border-neutral-200 bg-gradient-to-br from-green-50 via-white to-red-50 p-6 sm:p-7">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-green-800">
+          Ownership &amp; team
         </p>
-      ))}
+        <h2 className="mt-2 text-xl font-extrabold tracking-tight text-neutral-900 sm:text-2xl">
+          Who stands behind GoBiz
+        </h2>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {/* Owner */}
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-green-800 to-green-600 text-white shadow-sm">
+              <UserIcon />
+            </span>
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-green-800">
+              Owner
+            </p>
+            <p className="mt-1 text-sm font-bold text-neutral-900">
+              Gerald Mwai
+            </p>
+            <a
+              href="mailto:gerlomwai2@gmail.com"
+              className="mt-1 block break-words text-xs text-neutral-600 hover:text-green-800 hover:underline"
+            >
+              gerlomwai2@gmail.com
+            </a>
+          </div>
+
+          {/* Manager */}
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-neutral-900 to-neutral-700 text-white shadow-sm">
+              <TeamIcon />
+            </span>
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-neutral-700">
+              Managed by
+            </p>
+            <p className="mt-1 text-sm font-bold text-neutral-900">
+              The GoBiz team
+            </p>
+            <p className="mt-1 text-xs text-neutral-600">
+              Daily operations, orders, and customer care.
+            </p>
+          </div>
+
+          {/* Builder */}
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-red-800 to-red-600 text-white shadow-sm">
+              <CodeIcon />
+            </span>
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-red-800">
+              Built &amp; maintained by
+            </p>
+            <p className="mt-1 text-sm font-bold text-neutral-900">
+              DBC.Africa
+            </p>
+            <a
+              href="mailto:dbc.techfirm@gmail.com"
+              className="mt-1 block break-words text-xs text-neutral-600 hover:text-red-700 hover:underline"
+            >
+              dbc.techfirm@gmail.com
+            </a>
+          </div>
+        </div>
+
+        <p className="mt-5 text-[11px] leading-6 text-neutral-500">
+          GoBiz is owned and operated in Kenya. Website design, engineering,
+          and maintenance are provided by DBC.Africa.
+        </p>
+      </div>
+
+      {/* Hidden DBC.Africa credit */}
+      <div className="pt-1 text-center">
+        <a
+          href="mailto:dbc.techfirm@gmail.com"
+          aria-label="Website designed and maintained by DBC.Africa"
+          title="Designed & maintained by DBC.Africa"
+          className="text-[10px] text-neutral-300 underline-offset-4 transition hover:text-neutral-600 hover:underline focus:text-neutral-600 focus:outline-none"
+        >
+          Designed &amp; maintained by DBC.Africa
+        </a>
+      </div>
     </div>
   );
 }
@@ -153,7 +306,6 @@ function HowItWorksBody({ paragraphs }: { paragraphs: readonly string[] }) {
 }
 
 function FaqBody({ paragraphs }: { paragraphs: readonly string[] }) {
-  // Split "Question? Answer." — everything up to first "?" is the question.
   const items = paragraphs.map((p) => {
     const idx = p.indexOf("?");
     if (idx === -1) return { question: p, answer: "" };
@@ -189,7 +341,6 @@ function FaqBody({ paragraphs }: { paragraphs: readonly string[] }) {
 }
 
 function ServicesBody({ paragraphs }: { paragraphs: readonly string[] }) {
-  // Last paragraph is a disclaimer; render it as a muted note below cards.
   const cards = paragraphs.slice(0, -1);
   const note = paragraphs[paragraphs.length - 1];
 
@@ -230,7 +381,6 @@ function ServicesBody({ paragraphs }: { paragraphs: readonly string[] }) {
 }
 
 function ContactBody({ paragraphs }: { paragraphs: readonly string[] }) {
-  // First paragraph is intro text. Skip WhatsApp/Email lines (they render as cards).
   const intro = paragraphs[0];
   const footerNote = paragraphs[paragraphs.length - 1];
 
@@ -300,7 +450,6 @@ export function GoBizInfoPage({ slug }: { slug: InfoSlug }) {
 
   return (
     <article className="bg-white text-neutral-900">
-      {/* Editorial header */}
       <header className="border-b border-neutral-200 bg-white">
         <div className="mx-auto max-w-3xl px-5 pt-5 pb-6 sm:px-8 sm:pt-6 sm:pb-8">
           <Link
@@ -325,7 +474,6 @@ export function GoBizInfoPage({ slug }: { slug: InfoSlug }) {
         </div>
       </header>
 
-      {/* Body — renders differently per slug */}
       <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-10">
         {slug === "about" && <AboutBody paragraphs={page.paragraphs} />}
         {slug === "how-it-works" && (
@@ -335,7 +483,6 @@ export function GoBizInfoPage({ slug }: { slug: InfoSlug }) {
         {slug === "services" && <ServicesBody paragraphs={page.paragraphs} />}
         {slug === "contact" && <ContactBody paragraphs={page.paragraphs} />}
 
-        {/* Closing CTA — only on non-contact pages */}
         {slug !== "contact" && (
           <div className="mt-10 rounded-2xl border border-neutral-200 bg-gradient-to-br from-green-50 to-white p-6 sm:p-8">
             <h2 className="text-lg font-extrabold tracking-tight text-neutral-900 sm:text-xl">
@@ -347,7 +494,7 @@ export function GoBizInfoPage({ slug }: { slug: InfoSlug }) {
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
-                href="/#products"
+                href="/products"
                 className="inline-flex items-center gap-1.5 rounded-full bg-green-800 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-green-900"
               >
                 Browse the marketplace
@@ -374,7 +521,6 @@ export function GoBizInfoPage({ slug }: { slug: InfoSlug }) {
           </div>
         )}
 
-        {/* Contact page gets its own back button at the bottom */}
         {slug === "contact" && (
           <div className="mt-8">
             <Link
