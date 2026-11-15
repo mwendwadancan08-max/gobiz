@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import ProductsFloatingFoods from "@/components/ProductsFloatingFoods";
 
 type Variant = {
   id: string;
@@ -48,6 +49,17 @@ const mealImage =
 
 const farmImage =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=65";
+
+const floatingFoodImages = [
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=300&q=70",
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=70",
+  "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=300&q=70",
+  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=70",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=300&q=70",
+  "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=300&q=70",
+  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=300&q=70",
+  "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=300&q=70",
+];
 
 const CART_STORAGE_KEY = "gobiz-cart";
 const LOCATION_STORAGE_KEY = "gobiz-location";
@@ -97,7 +109,7 @@ function SearchIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 sm:left-4"
       aria-hidden="true"
     >
       <circle cx="11" cy="11" r="8" />
@@ -556,11 +568,15 @@ export default function ProductsPage() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col bg-white text-neutral-900">
-        <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+      <main className="products-shell relative flex min-h-screen flex-col overflow-hidden bg-white text-neutral-900">
+        {/* Floating food bubbles — 8 drifting across page */}
+        <ProductsFloatingFoods foods={floatingFoodImages} />
+
+        {/* HEADER */}
+        <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/85 backdrop-blur-xl">
+          <div className="relative mx-auto flex max-w-7xl items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
             <Link href="/" className="shrink-0">
-              <span className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <span className="text-xl font-extrabold tracking-tight sm:text-3xl">
                 <span className="text-green-700">Go</span>
                 <span className="text-red-700">Biz</span>
               </span>
@@ -577,7 +593,7 @@ export default function ProductsPage() {
                   }
                   placeholder="Search meals and farm products..."
                   aria-label="Search products"
-                  className="w-full rounded-full border border-neutral-300 bg-neutral-50 py-2.5 pl-11 pr-4 text-sm outline-none transition focus:border-green-700 focus:bg-white"
+                  className="w-full rounded-full border border-neutral-300 bg-white/70 py-2.5 pl-11 pr-4 text-sm outline-none backdrop-blur-sm transition focus:border-green-700 focus:bg-white"
                 />
               </div>
             </div>
@@ -585,17 +601,17 @@ export default function ProductsPage() {
             <button
               onClick={() => setCartOpen(true)}
               aria-label="Open cart"
-              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-green-800 py-2.5 pl-4 pr-2 text-sm font-semibold text-white transition hover:bg-green-900 sm:gap-2.5 sm:pl-5 sm:pr-2.5"
+              className="products-cart-btn ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-green-800 py-2 pl-3 pr-1.5 text-xs font-semibold text-white sm:gap-2.5 sm:py-2.5 sm:pl-5 sm:pr-2.5 sm:text-sm"
             >
               <CartIcon />
               <span className="hidden sm:inline">Cart</span>
-              <span className="flex min-w-6 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-[11px] font-extrabold text-green-900">
+              <span className="flex min-w-5 items-center justify-center rounded-full bg-white px-1 py-0.5 text-[10px] font-extrabold text-green-900 sm:min-w-6 sm:px-1.5 sm:text-[11px]">
                 {cartCount}
               </span>
             </button>
           </div>
 
-          <div className="px-4 pb-3 sm:hidden">
+          <div className="px-3 pb-2.5 sm:hidden">
             <div className="relative">
               <SearchIcon />
               <input
@@ -606,67 +622,82 @@ export default function ProductsPage() {
                 }
                 placeholder="Search meals and farm products..."
                 aria-label="Search products"
-                className="w-full rounded-full border border-neutral-300 bg-neutral-50 py-2.5 pl-11 pr-4 text-sm outline-none focus:border-green-700 focus:bg-white"
+                className="w-full rounded-full border border-neutral-300 bg-white/70 py-2 pl-10 pr-3 text-xs outline-none backdrop-blur-sm focus:border-green-700 focus:bg-white"
               />
             </div>
           </div>
         </header>
 
-        <section className="relative overflow-hidden bg-gradient-to-br from-green-950 via-green-900 to-red-950">
+        {/* HERO — matches welcome page (left-aligned, dark green, big wordmark) */}
+        <section className="products-hero relative overflow-hidden">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -right-24 top-0 h-72 w-72 rounded-full bg-red-500/25 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-green-500/25 blur-3xl"
+            className="products-hero-bg absolute inset-0"
           />
 
-          <div className="relative mx-auto max-w-7xl px-5 py-14 text-left sm:px-8 sm:py-20 md:py-24">
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-white backdrop-blur-sm sm:text-[11px]">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-32 top-0 h-80 w-80 rounded-full bg-red-600/25 blur-3xl"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-green-500/25 blur-3xl"
+          />
+
+          <div className="relative mx-auto max-w-7xl px-5 py-12 text-left sm:px-8 sm:py-16 md:py-20">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.24em] text-white backdrop-blur-sm sm:px-3 sm:py-1.5 sm:text-[11px]">
               <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-              The marketplace
+              The GoBiz catalogue
             </p>
 
-            <h1 className="mt-6 text-7xl font-black leading-none tracking-tighter text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.5)] sm:text-8xl md:text-9xl lg:text-[10rem]">
+            <h1 className="mt-4 text-6xl font-black leading-none tracking-tighter text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.55)] sm:mt-6 sm:text-8xl md:text-9xl lg:text-[10rem]">
               <span className="text-green-400">Go</span>
               <span className="text-red-400">Biz</span>
             </h1>
 
-            <p className="mt-6 max-w-lg text-base font-bold text-white sm:text-lg md:text-xl">
+            <p className="mt-1.5 font-[Galada] text-2xl text-green-300/90 sm:mt-3 sm:text-4xl">
+              fresh.
+            </p>
+
+            <p className="mt-3 max-w-lg text-sm font-bold text-white sm:mt-5 sm:text-lg md:text-xl">
               Good food. Fresh from the farm.
             </p>
 
-            <p className="mt-2 max-w-md text-xs text-green-50/70 sm:text-sm">
+            <p className="mt-1.5 max-w-md text-[11px] text-green-50/70 sm:mt-2 sm:text-sm">
               Browse meals and farm products. Pay on delivery.
             </p>
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl flex-1 px-3 py-8 sm:px-6 sm:py-12">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        {/* PRODUCTS GRID */}
+        <section className="relative z-10 mx-auto w-full max-w-7xl flex-1 px-3 py-6 sm:px-6 sm:py-12">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end sm:gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-green-800">
-                The GoBiz catalogue
-              </p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-green-800 sm:text-xs">
                 Find what you need
+              </p>
+              <h2 className="mt-1.5 text-xl font-extrabold tracking-tight sm:mt-2 sm:text-3xl">
+                {category === "ALL"
+                  ? "Everything in one place"
+                  : category === "READY_MADE"
+                    ? "Ready-made meals"
+                    : "Fresh farm products"}
               </h2>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {[
-                { label: "All products", value: "ALL" },
-                { label: "Ready-made meals", value: "READY_MADE" },
-                { label: "Farm products", value: "FARM" },
+                { label: "All", value: "ALL" },
+                { label: "Meals", value: "READY_MADE" },
+                { label: "Farm", value: "FARM" },
               ].map((item) => (
                 <button
                   key={item.value}
                   onClick={() => setCategory(item.value)}
-                  className={`rounded-full border px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm ${
+                  className={`rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition sm:px-4 sm:py-2 sm:text-sm ${
                     category === item.value
-                      ? "border-green-800 bg-green-800 text-white"
-                      : "border-neutral-300 bg-white hover:border-green-700 hover:bg-green-50"
+                      ? "border-green-800 bg-green-800 text-white shadow-lg shadow-green-900/20"
+                      : "border-neutral-300 bg-white/80 backdrop-blur-sm hover:border-green-700 hover:bg-green-50"
                   }`}
                 >
                   {item.label}
@@ -676,27 +707,28 @@ export default function ProductsPage() {
           </div>
 
           {productsLoading ? (
-            <div className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 px-5 py-12 text-center">
-              <p className="text-sm text-neutral-600">
+            <div className="mt-6 rounded-2xl border border-neutral-200 bg-white/80 px-5 py-12 text-center backdrop-blur-sm">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-green-200 border-t-green-700" />
+              <p className="mt-3 text-xs text-neutral-600 sm:text-sm">
                 Loading available products...
               </p>
             </div>
           ) : productsError ? (
             <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-10 text-center">
-              <h3 className="font-bold text-red-900">
+              <h3 className="text-sm font-bold text-red-900 sm:text-base">
                 Products are temporarily unavailable
               </h3>
-              <p className="mt-2 text-sm text-red-800">{productsError}</p>
+              <p className="mt-2 text-xs text-red-800 sm:text-sm">{productsError}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-4 rounded-full bg-green-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-900"
+                className="mt-4 rounded-full bg-green-800 px-5 py-2.5 text-xs font-semibold text-white hover:bg-green-900 sm:text-sm"
               >
                 Try again
               </button>
             </div>
           ) : (
             <>
-              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:mt-6 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {visibleProducts.map((product) => {
                   const hasVariants =
                     (product.variants?.length ?? 0) > 0;
@@ -733,7 +765,7 @@ export default function ProductsPage() {
                   return (
                     <article
                       key={product.id}
-                      className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:shadow-lg sm:rounded-2xl"
+                      className="products-card group relative flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white/95 shadow-sm backdrop-blur-sm sm:rounded-2xl"
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
                         {product.imageUrl ? (
@@ -743,11 +775,11 @@ export default function ProductsPage() {
                             alt={product.name}
                             loading="lazy"
                             decoding="async"
-                            className="h-full w-full object-cover"
+                            className="products-card-image h-full w-full object-cover"
                           />
                         ) : (
                           <div
-                            className="h-full w-full bg-cover bg-center"
+                            className="products-card-image h-full w-full bg-cover bg-center"
                             role="img"
                             aria-label={product.name}
                             style={{
@@ -755,18 +787,28 @@ export default function ProductsPage() {
                             }}
                           />
                         )}
+
+                        <span
+                          className={`absolute left-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-widest text-white shadow-md backdrop-blur-sm sm:left-2 sm:top-2 sm:px-2 sm:text-[9px] ${
+                            product.category === "FARM"
+                              ? "bg-red-600/90"
+                              : "bg-green-700/90"
+                          }`}
+                        >
+                          {product.category === "FARM" ? "Farm" : "Meal"}
+                        </span>
                       </div>
 
                       <div className="flex flex-1 flex-col p-2 sm:p-4">
-                        <h3 className="break-words text-xs font-bold leading-snug sm:text-base">
+                        <h3 className="break-words text-[11px] font-bold leading-snug sm:text-base">
                           {product.name}
                         </h3>
-                        <p className="mt-1 line-clamp-2 min-h-7 text-[10px] leading-4 text-neutral-500 sm:min-h-10 sm:text-xs sm:leading-5">
+                        <p className="mt-0.5 line-clamp-2 min-h-6 text-[9px] leading-3.5 text-neutral-500 sm:mt-1 sm:min-h-10 sm:text-xs sm:leading-5">
                           {product.description || "Available from GoBiz."}
                         </p>
 
                         {hasVariants && (
-                          <div className="mt-2 flex flex-wrap gap-1 sm:mt-3 sm:gap-1.5">
+                          <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-3 sm:gap-1.5">
                             {product.variants!.map((v) => {
                               const isActive = v.id === activeVariantId;
                               return (
@@ -780,9 +822,9 @@ export default function ProductsPage() {
                                       [String(product.id)]: v.id,
                                     }))
                                   }
-                                  className={`rounded-full border px-2 py-1 text-[10px] font-bold transition sm:text-xs ${
+                                  className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold transition sm:px-2 sm:py-1 sm:text-xs ${
                                     isActive
-                                      ? "border-green-800 bg-green-800 text-white"
+                                      ? "border-green-800 bg-green-800 text-white shadow-sm"
                                       : "border-neutral-300 bg-white text-neutral-700 hover:border-green-600 hover:bg-green-50"
                                   } ${!v.available ? "cursor-not-allowed opacity-40" : ""}`}
                                 >
@@ -793,12 +835,19 @@ export default function ProductsPage() {
                           </div>
                         )}
 
-                        <p className="mt-2 break-words text-xs font-extrabold sm:mt-3 sm:text-lg">
-                          {formatPrice(displayPrice)}
-                        </p>
+                        <div className="mt-1.5 flex items-baseline justify-between gap-1 sm:mt-3 sm:gap-2">
+                          <p className="break-words text-xs font-extrabold tracking-tight text-neutral-900 sm:text-lg">
+                            {formatPrice(displayPrice)}
+                          </p>
+                          {productQty > 0 && !lineInCart && (
+                            <span className="shrink-0 rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-bold text-green-800 sm:px-2 sm:text-[10px]">
+                              {productQty} in cart
+                            </span>
+                          )}
+                        </div>
 
                         {lineInCart ? (
-                          <div className="mt-2 flex items-center gap-1.5 sm:mt-3 sm:gap-2">
+                          <div className="mt-1.5 flex items-center gap-1 sm:mt-3 sm:gap-2">
                             <button
                               onClick={() =>
                                 changeQuantity(
@@ -808,12 +857,12 @@ export default function ProductsPage() {
                                 )
                               }
                               aria-label={`Remove one ${product.name}`}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white text-lg font-bold text-neutral-800 transition hover:bg-neutral-100"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white text-base font-bold text-neutral-800 transition hover:bg-neutral-100 sm:h-9 sm:w-9 sm:text-lg"
                             >
                               −
                             </button>
 
-                            <span className="flex h-9 min-w-8 items-center justify-center rounded-full border border-green-200 bg-green-50 px-2 text-xs font-extrabold text-green-800">
+                            <span className="flex h-7 min-w-6 items-center justify-center rounded-full border border-green-200 bg-green-50 px-1 text-[10px] font-extrabold text-green-800 sm:h-9 sm:min-w-8 sm:px-2 sm:text-xs">
                               {lineInCart.quantity}
                             </span>
 
@@ -825,7 +874,7 @@ export default function ProductsPage() {
                                 )
                               }
                               aria-label={`Add another ${product.name}`}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-800 text-lg font-bold text-white transition hover:bg-green-900"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-800 text-base font-bold text-white transition hover:bg-green-900 sm:h-9 sm:w-9 sm:text-lg"
                             >
                               +
                             </button>
@@ -838,7 +887,7 @@ export default function ProductsPage() {
                                 )
                               }
                               aria-label={`Remove ${product.name} from cart`}
-                              className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100 hover:text-red-800"
+                              className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100 hover:text-red-800 sm:h-9 sm:w-9"
                             >
                               <BinIcon />
                             </button>
@@ -854,10 +903,10 @@ export default function ProductsPage() {
                             disabled={
                               !!activeVariant && !activeVariant.available
                             }
-                            className="mt-2 w-full rounded-full bg-green-800 px-1.5 py-2 text-[10px] font-bold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-neutral-300 sm:mt-3 sm:px-3 sm:py-2.5 sm:text-sm"
+                            className="products-add-btn mt-1.5 w-full rounded-full bg-green-800 px-2 py-1.5 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:bg-neutral-300 sm:mt-3 sm:py-2.5 sm:text-sm"
                           >
                             {productQty > 0
-                              ? "Add to cart again"
+                              ? "Add another"
                               : "Add to cart"}
                           </button>
                         )}
@@ -868,13 +917,13 @@ export default function ProductsPage() {
               </div>
 
               {visibleProducts.length === 0 && (
-                <div className="mt-8 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-5 py-12 text-center">
-                  <h3 className="font-bold">
+                <div className="mt-8 rounded-2xl border border-dashed border-neutral-300 bg-white/80 px-5 py-12 text-center backdrop-blur-sm">
+                  <h3 className="text-sm font-bold sm:text-base">
                     {products.length === 0
                       ? "No products available yet"
                       : "No matching products"}
                   </h3>
-                  <p className="mt-2 text-sm text-neutral-500">
+                  <p className="mt-2 text-xs text-neutral-500 sm:text-sm">
                     {products.length === 0
                       ? "Products added to the GoBiz catalogue will appear here."
                       : "Try another search or choose a different category."}
@@ -885,7 +934,7 @@ export default function ProductsPage() {
                         setSearch("");
                         setCategory("ALL");
                       }}
-                      className="mt-4 rounded-full bg-green-800 px-5 py-2.5 text-sm font-semibold text-white"
+                      className="mt-4 rounded-full bg-green-800 px-5 py-2.5 text-xs font-semibold text-white sm:text-sm"
                     >
                       Show all products
                     </button>
@@ -896,24 +945,25 @@ export default function ProductsPage() {
           )}
         </section>
 
-        <footer className="mt-auto bg-neutral-950 text-white">
-          <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:grid-cols-3 sm:px-6">
+        {/* FOOTER */}
+        <footer className="relative z-10 mt-auto bg-neutral-950 text-white">
+          <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-3 sm:gap-8 sm:px-6 sm:py-12">
             <div>
-              <p className="text-2xl font-extrabold tracking-tight">
+              <p className="text-xl font-extrabold tracking-tight sm:text-2xl">
                 <span className="text-green-400">Go</span>
                 <span className="text-red-400">Biz</span>
               </p>
-              <p className="mt-3 max-w-xs text-sm leading-6 text-neutral-400">
+              <p className="mt-2 max-w-xs text-xs leading-5 text-neutral-400 sm:mt-3 sm:text-sm sm:leading-6">
                 Ready-made meals and farm products in one convenient
                 marketplace.
               </p>
             </div>
 
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 sm:text-xs">
                 Explore GoBiz
               </h3>
-              <div className="mt-3 flex flex-col items-start gap-2 text-sm text-neutral-300">
+              <div className="mt-2 flex flex-col items-start gap-1.5 text-xs text-neutral-300 sm:mt-3 sm:gap-2 sm:text-sm">
                 {contactPages.map((p) => (
                   <Link
                     key={p.href}
@@ -927,10 +977,10 @@ export default function ProductsPage() {
             </div>
 
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 sm:text-xs">
                 Contact our team
               </h3>
-              <p className="mt-3 text-sm text-neutral-300">
+              <p className="mt-2 text-xs text-neutral-300 sm:mt-3 sm:text-sm">
                 WhatsApp:{" "}
                 <a
                   href="https://wa.me/254757699959"
@@ -939,7 +989,7 @@ export default function ProductsPage() {
                   +254 757 699959
                 </a>
               </p>
-              <p className="mt-2 text-sm text-neutral-300">
+              <p className="mt-1.5 text-xs text-neutral-300 sm:mt-2 sm:text-sm">
                 Email:{" "}
                 <a
                   href="mailto:254gobiz@gmail.com"
@@ -948,7 +998,7 @@ export default function ProductsPage() {
                   254gobiz@gmail.com
                 </a>
               </p>
-              <p className="mt-4 text-xs leading-5 text-neutral-500">
+              <p className="mt-3 text-[10px] leading-4 text-neutral-500 sm:mt-4 sm:text-xs sm:leading-5">
                 Owned by{" "}
                 <span className="font-semibold text-neutral-300">
                   Gerald Mwai
@@ -963,7 +1013,7 @@ export default function ProductsPage() {
                 href="mailto:dbc.techfirm@gmail.com"
                 aria-label="Website designed and maintained by DBC.Africa"
                 title="Designed & maintained by DBC.Africa"
-                className="mt-3 inline-block text-xs text-neutral-500 opacity-40 transition hover:text-red-300 hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-300"
+                className="mt-2 inline-block text-[10px] text-neutral-500 opacity-40 transition hover:text-red-300 hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-300 sm:mt-3 sm:text-xs"
               >
                 Designed &amp; maintained by{" "}
                 <span className="font-semibold">DBC.Africa</span>
@@ -974,16 +1024,16 @@ export default function ProductsPage() {
 
         {cartOpen && (
           <div
-            className="fixed inset-0 z-[70] bg-black/50"
+            className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm"
             onClick={() => setCartOpen(false)}
           >
             <section
               className="ml-auto flex h-full w-full flex-col bg-white sm:max-w-md"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b p-5">
+              <div className="flex items-center justify-between border-b p-4 sm:p-5">
                 <div>
-                  <h2 className="text-xl font-extrabold">Your cart</h2>
+                  <h2 className="text-lg font-extrabold sm:text-xl">Your cart</h2>
                   <p className="mt-1 text-xs text-neutral-500">
                     {cartCount} item{cartCount === 1 ? "" : "s"}
                   </p>
@@ -997,99 +1047,84 @@ export default function ProductsPage() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-5">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5">
                 {cart.length === 0 ? (
                   <div className="py-16 text-center">
-                    <h3 className="text-lg font-bold">Your cart is empty</h3>
-                    <p className="mt-2 text-sm leading-6 text-neutral-500">
+                    <h3 className="text-base font-bold sm:text-lg">Your cart is empty</h3>
+                    <p className="mt-2 text-xs leading-5 text-neutral-500 sm:text-sm sm:leading-6">
                       Add meals or farm products to get started.
                     </p>
                     <button
                       onClick={() => setCartOpen(false)}
-                      className="mt-5 rounded-full bg-green-800 px-5 py-3 text-sm font-semibold text-white"
+                      className="mt-5 rounded-full bg-green-800 px-5 py-3 text-xs font-semibold text-white sm:text-sm"
                     >
                       Continue shopping
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {cart.map((item) => (
                       <div
                         key={cartLineKey(item.product.id, item.variantId)}
-                        className="flex flex-col gap-3 rounded-2xl border border-green-200 bg-green-50/50 p-4 shadow-sm"
+                        className="flex flex-col gap-2.5 rounded-xl border border-green-200 bg-green-50/50 p-3 shadow-sm sm:gap-3 sm:rounded-2xl sm:p-4"
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-2 sm:gap-3">
                           <div className="min-w-0">
-                            <h3 className="break-words font-bold text-neutral-900">
+                            <h3 className="break-words text-sm font-bold text-neutral-900 sm:text-base">
                               {item.product.name}
                               {item.variantLabel && (
-                                <span className="ml-1 text-xs font-semibold text-neutral-500">
+                                <span className="ml-1 text-[10px] font-semibold text-neutral-500 sm:text-xs">
                                   ({item.variantLabel})
                                 </span>
                               )}
                             </h3>
-                            <p className="mt-1 text-xs text-neutral-500">
+                            <p className="mt-0.5 text-[10px] text-neutral-500 sm:mt-1 sm:text-xs">
                               {item.product.category === "FARM"
                                 ? "Farm product"
                                 : "Ready-made meal"}
                             </p>
-                            <p className="mt-1 text-sm text-neutral-500">
+                            <p className="mt-0.5 text-xs text-neutral-500 sm:mt-1 sm:text-sm">
                               {formatPrice(item.unitPrice)} each
                             </p>
                           </div>
 
-                          <p className="shrink-0 font-extrabold text-green-900">
-                            {formatPrice(
-                              item.unitPrice * item.quantity
-                            )}
+                          <p className="shrink-0 text-sm font-extrabold text-green-900 sm:text-base">
+                            {formatPrice(item.unitPrice * item.quantity)}
                           </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 rounded-full border border-neutral-200 bg-white p-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+                          <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white p-1 sm:gap-3">
                             <button
                               onClick={() =>
-                                changeQuantity(
-                                  item.product.id,
-                                  item.variantId,
-                                  -1
-                                )
+                                changeQuantity(item.product.id, item.variantId, -1)
                               }
                               aria-label={`Remove one ${item.product.name}`}
-                              className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 text-lg font-bold text-neutral-800 hover:bg-neutral-100"
+                              className="flex h-7 w-7 items-center justify-center rounded-full border border-neutral-200 text-base font-bold text-neutral-800 hover:bg-neutral-100 sm:h-8 sm:w-8 sm:text-lg"
                             >
                               −
                             </button>
 
-                            <span className="min-w-5 text-center text-sm font-extrabold text-neutral-900">
+                            <span className="min-w-5 text-center text-xs font-extrabold text-neutral-900 sm:text-sm">
                               {item.quantity}
                             </span>
 
                             <button
                               onClick={() =>
-                                changeQuantity(
-                                  item.product.id,
-                                  item.variantId,
-                                  1
-                                )
+                                changeQuantity(item.product.id, item.variantId, 1)
                               }
                               aria-label={`Add one ${item.product.name}`}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-green-800 text-lg font-bold text-white hover:bg-green-900"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-green-800 text-base font-bold text-white hover:bg-green-900 sm:h-8 sm:w-8 sm:text-lg"
                             >
                               +
                             </button>
                           </div>
 
                           <button
-                            onClick={() =>
-                              removeFromCart(
-                                item.product.id,
-                                item.variantId
-                              )
-                            }
-                            className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100"
+                            onClick={() => removeFromCart(item.product.id, item.variantId)}
+                            className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1.5 text-[10px] font-bold text-red-800 hover:bg-red-100 sm:px-3 sm:py-2 sm:text-xs"
                           >
-                            Remove item
+                            Remove
                           </button>
                         </div>
                       </div>
@@ -1098,18 +1133,18 @@ export default function ProductsPage() {
                 )}
               </div>
 
-              <div className="border-t bg-white p-5">
-                <div className="flex justify-between text-lg font-extrabold">
+              <div className="border-t bg-white p-4 sm:p-5">
+                <div className="flex justify-between text-base font-extrabold sm:text-lg">
                   <span>Subtotal</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                <p className="mt-2 text-[10px] leading-4 text-neutral-500 sm:text-xs sm:leading-5">
                   Delivery charges are calculated at checkout. Payment is made
                   on delivery.
                 </p>
 
                 {!location && cart.length > 0 && (
-                  <p className="mt-3 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm leading-6 text-sky-900">
+                  <p className="mt-2.5 rounded-lg border border-sky-100 bg-sky-50 p-2.5 text-[11px] leading-5 text-sky-900 sm:mt-3 sm:rounded-xl sm:p-3 sm:text-sm sm:leading-6">
                     You can continue to checkout, but sharing your GPS location
                     is mandatory before an order can be placed.
                   </p>
@@ -1118,7 +1153,7 @@ export default function ProductsPage() {
                 <button
                   disabled={cart.length === 0}
                   onClick={goToCheckout}
-                  className="mt-4 w-full rounded-full bg-green-800 px-5 py-3.5 font-bold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-neutral-300"
+                  className="mt-3 w-full rounded-full bg-green-800 px-5 py-3 text-sm font-bold text-white hover:bg-green-900 disabled:cursor-not-allowed disabled:bg-neutral-300 sm:mt-4 sm:py-3.5"
                 >
                   Proceed to checkout
                 </button>
@@ -1131,23 +1166,23 @@ export default function ProductsPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
             <section className="w-full max-w-md overflow-hidden rounded-3xl border border-green-100 bg-white shadow-2xl">
               <div className="bg-gradient-to-r from-green-900 to-green-700 p-5 text-white">
-                <p className="text-xs font-bold uppercase tracking-widest text-green-200">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-green-200 sm:text-xs">
                   GoBiz delivery check
                 </p>
-                <h2 className="mt-2 text-2xl font-extrabold">
+                <h2 className="mt-2 text-xl font-extrabold sm:text-2xl">
                   Is GoBiz delivering to your area?
                 </h2>
               </div>
 
-              <div className="p-6">
-                <p className="text-sm leading-7 text-neutral-600">
+              <div className="p-5 sm:p-6">
+                <p className="text-xs leading-6 text-neutral-600 sm:text-sm sm:leading-7">
                   Share your GPS location so GoBiz can check delivery
                   availability. You can skip this step to browse, but location
                   sharing is required before placing an order.
                 </p>
 
                 {locationMessage && (
-                  <p className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm leading-6 text-sky-900">
+                  <p className="mt-3 rounded-lg border border-sky-100 bg-sky-50 p-2.5 text-xs leading-5 text-sky-900 sm:mt-4 sm:rounded-xl sm:p-3 sm:text-sm sm:leading-6">
                     {locationMessage}
                   </p>
                 )}
@@ -1155,7 +1190,7 @@ export default function ProductsPage() {
                 <button
                   onClick={checkLocation}
                   disabled={checkingLocation}
-                  className="mt-5 w-full rounded-full bg-green-800 px-5 py-3.5 font-bold text-white hover:bg-green-900 disabled:opacity-60"
+                  className="mt-4 w-full rounded-full bg-green-800 px-5 py-3 text-sm font-bold text-white hover:bg-green-900 disabled:opacity-60 sm:mt-5 sm:py-3.5"
                 >
                   {checkingLocation
                     ? "Checking location..."
@@ -1164,12 +1199,12 @@ export default function ProductsPage() {
 
                 <button
                   onClick={() => setLocationOpen(false)}
-                  className="mt-3 w-full rounded-full border border-neutral-300 px-5 py-3 text-sm font-semibold hover:bg-neutral-50"
+                  className="mt-2.5 w-full rounded-full border border-neutral-300 px-5 py-2.5 text-xs font-semibold hover:bg-neutral-50 sm:mt-3 sm:py-3 sm:text-sm"
                 >
                   Browse without sharing
                 </button>
 
-                <p className="mt-4 text-center text-xs leading-5 text-neutral-500">
+                <p className="mt-3 text-center text-[10px] leading-4 text-neutral-500 sm:mt-4 sm:text-xs sm:leading-5">
                   You can browse without sharing. Your location is required
                   when placing an order.
                 </p>
@@ -1182,11 +1217,11 @@ export default function ProductsPage() {
           <div
             role="status"
             aria-live="polite"
-            className="fixed bottom-5 left-1/2 z-[120] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-2xl bg-neutral-950 px-4 py-3 text-white shadow-2xl"
+            className="fixed bottom-4 left-1/2 z-[120] w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2 rounded-xl bg-neutral-950 px-3 py-2.5 text-white shadow-2xl sm:bottom-5 sm:w-[calc(100%-2rem)] sm:rounded-2xl sm:px-4 sm:py-3"
           >
-            <p className="text-sm font-bold">Added to cart</p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="min-w-0 truncate text-xs text-neutral-300">
+            <p className="text-xs font-bold sm:text-sm">Added to cart</p>
+            <div className="mt-1 flex items-center justify-between gap-2 sm:gap-3">
+              <p className="min-w-0 truncate text-[10px] text-neutral-300 sm:text-xs">
                 {addedProduct}
               </p>
               <button
@@ -1194,7 +1229,7 @@ export default function ProductsPage() {
                   setAddedNotice(false);
                   setCartOpen(true);
                 }}
-                className="shrink-0 rounded-full bg-white px-3 py-2 text-xs font-bold text-neutral-900"
+                className="shrink-0 rounded-full bg-white px-2.5 py-1.5 text-[10px] font-bold text-neutral-900 sm:px-3 sm:py-2 sm:text-xs"
               >
                 View cart ({cartCount})
               </button>

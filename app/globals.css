@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ===== Soda-style welcome page styles (scoped to .welcome-*) ===== */
+/* ===== Welcome page styles (scoped to .welcome-*) ===== */
 
 .welcome-shell {
   --bg-inner: #0b8a78;
@@ -179,7 +179,117 @@
   }
 }
 
-/* ===== Existing base resets (unchanged) ===== */
+/* ===== Products page styles (scoped to .products-*) ===== */
+
+/* Green tint over white so floating foods are visible */
+.products-shell {
+  background: linear-gradient(
+    180deg,
+    #f0fdf4 0%,
+    #ffffff 25%,
+    #ffffff 75%,
+    #f0fdf4 100%
+  );
+}
+
+/* Hero — matches welcome page dark green */
+.products-hero-bg {
+  background: radial-gradient(
+    circle at 30% 40%,
+    #0b8a78 0%,
+    #044e3b 50%,
+    #011411 100%
+  );
+}
+
+/* Floating foods — visible on white, smaller on phones */
+.products-floater {
+  will-change: transform;
+}
+
+.products-floater-size {
+  width: 130px;
+  height: 130px;
+}
+
+@media (max-width: 640px) {
+  .products-floater-size {
+    width: 65px !important;
+    height: 65px !important;
+  }
+}
+
+/* Rising bubbles on products page (green tinted for white bg) */
+.products-bubble {
+  position: absolute;
+  bottom: -40px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(21, 128, 61, 0.35),
+    rgba(21, 128, 61, 0.02) 70%
+  );
+  border: 1px solid rgba(21, 128, 61, 0.15);
+  pointer-events: none;
+}
+
+@keyframes products-bubble-rise {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-110vh) translateX(30px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* Product cards */
+.products-card {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.products-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(21, 128, 61, 0.35);
+  box-shadow: 0 20px 45px -20px rgba(20, 83, 45, 0.35);
+}
+
+.products-card-image {
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.products-card:hover .products-card-image {
+  transform: scale(1.08);
+}
+
+.products-add-btn {
+  transition: transform 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.products-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -8px rgba(20, 83, 45, 0.45);
+}
+
+.products-cart-btn {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.products-cart-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -10px rgba(20, 83, 45, 0.6);
+}
+
+/* ===== Base resets ===== */
 
 * {
   box-sizing: border-box;
