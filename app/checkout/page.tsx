@@ -29,12 +29,15 @@ type Coordinates = {
   longitude: number;
 };
 
+type DeliverySettings = {
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+  feeMode: string;
+};
+
 const CART_KEY = "gobiz-cart";
 const LOCATION_KEY = "gobiz-location";
-
-const SERVICE_LAT = -0.6974717835542885;
-const SERVICE_LNG = 34.78543150783463;
-const DELIVERY_RADIUS_KM = 5;
 
 function formatPrice(value: number) {
   return `KSh ${value.toLocaleString("en-KE")}`;
@@ -60,7 +63,6 @@ function distanceKm(a: Coordinates, b: Coordinates) {
   );
 }
 
-// Migrate old cart entries (no variantId / unitPrice) → variant-aware shape
 function normalizeCartItem(raw: unknown): CartItem | null {
   if (
     raw === null ||
@@ -158,6 +160,51 @@ export default function CheckoutPage() {
     total: number;
   } | null>(null);
 
+  // Delivery settings from the DB (source of truth)
+  const [settings, setSettings] = useState<DeliverySettings | null>(null);
+  const [settingsError, setSettingsError] = useState("");
+
+  // Fetch delivery settings on mount
+  useEffect(() => {
+    let active = true;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/delivery-settings", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Could not load delivery settings.");
+        }
+
+        if (active) {
+          setSettings({
+            latitude: Number(data.latitude),
+            longitude: Number(data.longitude),
+            radiusKm: Number(data.radiusKm),
+            feeMode: String(data.feeMode ?? "FREE"),
+          });
+        }
+      } catch (err) {
+        if (active) {
+          setSettingsError(
+            err instanceof Error
+              ? err.message
+              : "Could not load delivery settings."
+          );
+        }
+      }
+    }
+
+    void loadSettings();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Hydrate cart + location from localStorage
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem(CART_KEY);
@@ -206,14 +253,19 @@ export default function CheckoutPage() {
     0
   );
 
-  const distance = location
-    ? distanceKm(location, {
-        latitude: SERVICE_LAT,
-        longitude: SERVICE_LNG,
-      })
-    : null;
+  // Distance is computed only when both location and settings are ready
+  const distance =
+    location && settings
+      ? distanceKm(location, {
+          latitude: settings.latitude,
+          longitude: settings.longitude,
+        })
+      : null;
 
-  const withinRadius = distance !== null && distance <= DELIVERY_RADIUS_KM;
+  const withinRadius =
+    distance !== null && settings !== null
+      ? distance <= settings.radiusKm
+      : false;
 
   function shareLocation() {
     setError("");
@@ -260,9 +312,16 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!settings) {
+      setError(
+        "Delivery settings are not ready. Refresh the page and try again."
+      );
+      return;
+    }
+
     if (!withinRadius) {
       setError(
-        "Your location is outside GoBiz's 5 km delivery radius. We cannot accept this delivery order."
+        `Your location is outside GoBiz's ${settings.radiusKm} km delivery radius. We cannot accept this delivery order.`
       );
       return;
     }
@@ -429,27 +488,42 @@ export default function CheckoutPage() {
                 Delivery location
               </h2>
 
+              {settingsError && (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+                >
+                  {settingsError}
+                </p>
+              )}
+
               <p className="mt-2 text-sm leading-6 text-neutral-600">
-                GoBiz delivers within 5 km of its service centre. Share your
-                current GPS location to verify your delivery eligibility.
+                {settings
+                  ? `GoBiz delivers within ${settings.radiusKm} km of its service centre. Share your current GPS location to verify your delivery eligibility.`
+                  : "Loading delivery range..."}
               </p>
 
               {location ? (
                 <div
                   className={`mt-4 rounded-xl border p-4 ${
-                    withinRadius
-                      ? "border-green-200 bg-green-50"
-                      : "border-red-200 bg-red-50"
+                    !settings
+                      ? "border-neutral-200 bg-neutral-50"
+                      : withinRadius
+                        ? "border-green-200 bg-green-50"
+                        : "border-red-200 bg-red-50"
                   }`}
                 >
                   <p className="text-sm font-semibold">
-                    {withinRadius
-                      ? "Your GPS location is within the delivery radius."
-                      : "Your GPS location is outside the delivery radius."}
+                    {!settings
+                      ? "Checking delivery range..."
+                      : withinRadius
+                        ? "Your GPS location is within the delivery radius."
+                        : "Your GPS location is outside the delivery radius."}
                   </p>
 
                   <p className="mt-1 text-sm text-neutral-600">
                     Distance: {distance?.toFixed(2)} km from the service centre.
+                    {settings ? ` (allowed: ${settings.radiusKm} km)` : ""}
                   </p>
 
                   <button
@@ -594,17 +668,23 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={
-                submitting || cart.length === 0 || !location || !withinRadius
+                submitting ||
+                cart.length === 0 ||
+                !location ||
+                !settings ||
+                !withinRadius
               }
               className="w-full rounded-full bg-red-600 px-5 py-4 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
             >
               {submitting
                 ? "Placing your order..."
-                : !location
-                  ? "Share location to place order"
-                  : !withinRadius
-                    ? "Outside delivery area"
-                    : "Confirm order"}
+                : !settings
+                  ? "Loading delivery range..."
+                  : !location
+                    ? "Share location to place order"
+                    : !withinRadius
+                      ? "Outside delivery area"
+                      : "Confirm order"}
             </button>
 
             <p className="text-xs leading-5 text-neutral-500">
@@ -617,8 +697,7 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-extrabold sm:text-xl">Your order</h2>
               <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-800">
-                {cart.reduce((count, item) => count + item.quantity, 0)}{" "}
-                items
+                {cart.reduce((count, item) => count + item.quantity, 0)} items
               </span>
             </div>
 
@@ -702,7 +781,8 @@ export default function CheckoutPage() {
             title="Designed & maintained by DBC.Africa"
             className="rounded-full px-3 py-2 text-[10px] text-neutral-300 underline-offset-4 transition hover:bg-neutral-100 hover:text-neutral-700 hover:underline focus:text-neutral-700 focus:outline-none sm:text-xs"
           >
-            Designed &amp; maintained by <span className="font-semibold">DBC.Africa</span>
+            Designed &amp; maintained by{" "}
+            <span className="font-semibold">DBC.Africa</span>
           </a>
         </footer>
       </div>
