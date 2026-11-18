@@ -12,18 +12,24 @@ type VariantInput = {
   available?: boolean;
 };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET() {
   try {
     const products = await sql.query(
       `SELECT
          p.id,
          p.name,
-         c.type AS category,
+         parent.type AS category,
+         c.id::text AS "subCategoryId",
+         c.name AS "subCategoryName",
          p.price_kes AS price,
          COALESCE(p.description, '') AS description,
          image.url AS "imageUrl"
        FROM public.products p
        JOIN public.categories c ON c.id = p.category_id
+       LEFT JOIN public.categories parent ON parent.id = c.parent_id
        LEFT JOIN LATERAL (
          SELECT url
          FROM public.product_images
@@ -40,12 +46,13 @@ export async function GET() {
       id: string;
       name: string;
       category: string;
+      subCategoryId: string | null;
+      subCategoryName: string | null;
       price: number;
       description: string;
       imageUrl: string | null;
     }>;
 
-    // Load variants for all returned products in one query
     const productIds = productRows.map((p) => p.id);
 
     let variantsByProduct: Record<
@@ -109,7 +116,6 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    // Verify the signed-in user on the server.
     const { data: session } = await auth.getSession();
     const user = session?.user;
 
@@ -120,7 +126,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Only approved staff (admins or employees) may create products.
     const profiles = await sql.query(
       `SELECT role, approval_status
        FROM public.app_users
@@ -187,7 +192,20 @@ export async function POST(request: Request) {
       }
     }
 
-    // Optional variants Ã¢â‚¬â€ if omitted or empty, product is simple (no variants).
+    // Optional sub-category
+    const subCategoryIdRaw =
+      typeof body.subCategoryId === "string" ? body.subCategoryId.trim() : "";
+    const subCategoryId =
+      subCategoryIdRaw === "" ? null : subCategoryIdRaw;
+
+    if (subCategoryId !== null && !UUID_RE.test(subCategoryId)) {
+      return NextResponse.json(
+        { error: "The sub-category ID is invalid." },
+        { status: 400 }
+      );
+    }
+
+    // Optional variants
     const variantsInput = Array.isArray(body.variants) ? body.variants : [];
 
     if (variantsInput.length > 20) {
@@ -233,7 +251,6 @@ export async function POST(request: Request) {
       variants.push({ label: vLabel, price: vPrice, available: vAvailable });
     }
 
-    // Reject duplicate labels within the same submission
     const labels = variants.map((v) => v.label);
     if (new Set(labels).size !== labels.length) {
       return NextResponse.json(
@@ -242,23 +259,50 @@ export async function POST(request: Request) {
       );
     }
 
-    const categories = await sql.query(
-      `SELECT id
-       FROM public.categories
-       WHERE type = $1 AND active = true
-       LIMIT 1`,
-      [category]
-    );
+    // Resolve the effective category_id
+    let categoryRecord: { id: string } | undefined;
 
-    const categoryRecord = categories[0] as
-      | { id: string }
-      | undefined;
-
-    if (!categoryRecord) {
-      return NextResponse.json(
-        { error: "The selected product category is unavailable." },
-        { status: 400 }
+    if (subCategoryId !== null) {
+      // Must exist, be active, and be a child of the parent category type
+      const subRows = await sql.query(
+        `SELECT c.id
+         FROM public.categories c
+         JOIN public.categories parent ON parent.id = c.parent_id
+         WHERE c.id = $1
+           AND c.active = true
+           AND parent.type = $2
+         LIMIT 1`,
+        [subCategoryId, category]
       );
+
+      categoryRecord = subRows[0] as { id: string } | undefined;
+
+      if (!categoryRecord) {
+        return NextResponse.json(
+          {
+            error:
+              "The selected sub-category does not belong to the chosen category.",
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      const cats = await sql.query(
+        `SELECT id
+         FROM public.categories
+         WHERE type = $1 AND active = true AND parent_id IS NULL
+         LIMIT 1`,
+        [category]
+      );
+
+      categoryRecord = cats[0] as { id: string } | undefined;
+
+      if (!categoryRecord) {
+        return NextResponse.json(
+          { error: "The selected product category is unavailable." },
+          { status: 400 }
+        );
+      }
     }
 
     const slugBase = name
@@ -305,7 +349,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert variants if provided
     let insertedVariants: Array<{
       id: string;
       label: string;
@@ -316,7 +359,7 @@ export async function POST(request: Request) {
 
     if (variants.length > 0) {
       const productIds = variants.map(() => product.id);
-      const labels = variants.map((v) => v.label);
+      const labelsArr = variants.map((v) => v.label);
       const prices = variants.map((v) => v.price);
       const available = variants.map((v) => v.available ?? true);
       const positions = variants.map((_v, i) => i);
@@ -333,7 +376,7 @@ export async function POST(request: Request) {
            $5::integer[]
          ) AS t(p_id, p_label, p_price, p_available, p_position)
          RETURNING id, label, price_kes AS price, available, position`,
-        [productIds, labels, prices, available, positions]
+        [productIds, labelsArr, prices, available, positions]
       );
 
       insertedVariants = variantRows as typeof insertedVariants;
@@ -344,6 +387,7 @@ export async function POST(request: Request) {
         product: {
           ...product,
           category,
+          subCategoryId,
           imageUrl: imageUrl || null,
           variants: insertedVariants,
         },

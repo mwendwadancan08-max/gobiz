@@ -14,10 +14,25 @@ type Product = {
   id: string;
   name: string;
   category: "READY_MADE" | "FARM";
+  subCategoryId?: string | null;
+  subCategoryName?: string | null;
   price: number;
   description: string;
   imageUrl?: string | null;
   variants?: Variant[];
+};
+
+type Category = {
+  id: string;
+  name: string;
+  type: "READY_MADE" | "FARM";
+  parentId: string | null;
+  children: Array<{
+    id: string;
+    name: string;
+    type: "READY_MADE" | "FARM";
+    parentId: string | null;
+  }>;
 };
 
 type VariantDraft = {
@@ -27,9 +42,11 @@ type VariantDraft = {
 
 export default function MealsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
   const [category, setCategory] =
     useState<Product["category"]>("READY_MADE");
+  const [subCategoryId, setSubCategoryId] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -68,6 +85,14 @@ export default function MealsPage() {
             variants: Array.isArray(product.variants)
               ? product.variants
               : [],
+            subCategoryId:
+              typeof product.subCategoryId === "string"
+                ? product.subCategoryId
+                : null,
+            subCategoryName:
+              typeof product.subCategoryName === "string"
+                ? product.subCategoryName
+                : null,
           })
         )
       );
@@ -80,9 +105,30 @@ export default function MealsPage() {
     }
   }, []);
 
+  const loadCategories = useCallback(async () => {
+    try {
+      const response = await fetch("/api/categories", {
+        cache: "no-store",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not load categories.");
+      }
+
+      setCategories(Array.isArray(data.categories) ? data.categories : []);
+    } catch (error) {
+      console.error(
+        "Failed to load categories:",
+        error instanceof Error ? error.message : error
+      );
+    }
+  }, []);
+
   useEffect(() => {
     void loadProducts();
-  }, [loadProducts]);
+    void loadCategories();
+  }, [loadProducts, loadCategories]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -151,6 +197,7 @@ export default function MealsPage() {
   function resetForm() {
     setName("");
     setCategory("READY_MADE");
+    setSubCategoryId("");
     setDescription("");
     setPrice("");
     setImageFile(null);
@@ -165,6 +212,7 @@ export default function MealsPage() {
     setEditingId(product.id);
     setName(product.name);
     setCategory(product.category);
+    setSubCategoryId(product.subCategoryId ?? "");
     setDescription(product.description ?? "");
     setPrice(String(product.price));
     setCurrentImage(product.imageUrl ?? "");
@@ -206,6 +254,10 @@ export default function MealsPage() {
     );
   }
 
+  // Sub-categories for the currently-selected parent category
+  const subCategoryOptions =
+    categories.find((c) => c.type === category)?.children ?? [];
+
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -220,7 +272,6 @@ export default function MealsPage() {
       return;
     }
 
-    // Build the variants payload (empty array when toggle off → clears variants)
     let variantPayload: Array<{
       label: string;
       price: number;
@@ -261,7 +312,7 @@ export default function MealsPage() {
       }
 
       variantPayload = cleaned;
-      effectivePrice = cleaned[0].price; // base price = first variant
+      effectivePrice = cleaned[0].price;
     } else {
       const numPrice = Number(price);
       if (!Number.isSafeInteger(numPrice) || numPrice <= 0) {
@@ -284,19 +335,25 @@ export default function MealsPage() {
       const editing = Boolean(editingId);
       setMessage(editing ? "Updating product..." : "Saving product...");
 
+      const payload: Record<string, unknown> = {
+        name: name.trim(),
+        category,
+        description: description.trim(),
+        price: effectivePrice,
+        variants: variantPayload,
+        subCategoryId: subCategoryId || null,
+      };
+
+      if (imageUrl) {
+        payload.imageUrl = imageUrl;
+      }
+
       const response = await fetch(
         editing ? `/api/products/${editingId}` : "/api/products",
         {
           method: editing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: name.trim(),
-            category,
-            description: description.trim(),
-            price: effectivePrice,
-            ...(imageUrl ? { imageUrl } : {}),
-            variants: variantPayload,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -394,14 +451,39 @@ export default function MealsPage() {
 
         <select
           value={category}
-          onChange={(event) =>
-            setCategory(event.target.value as Product["category"])
-          }
+          onChange={(event) => {
+            setCategory(event.target.value as Product["category"]);
+            setSubCategoryId("");
+          }}
           className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm"
         >
           <option value="READY_MADE">Ready-made meals</option>
           <option value="FARM">Fresh farm products</option>
         </select>
+
+        {category === "READY_MADE" && subCategoryOptions.length > 0 && (
+          <div className="sm:col-span-2">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Sub-category (optional)
+            </label>
+            <select
+              value={subCategoryId}
+              onChange={(event) => setSubCategoryId(event.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm"
+            >
+              <option value="">— None (show under all Ready-made)</option>
+              {subCategoryOptions.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Choose Drinks, Snacks or Meals so the product appears under
+              that tab on the marketplace.
+            </p>
+          </div>
+        )}
 
         <div className="sm:col-span-2">
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -628,6 +710,9 @@ export default function MealsPage() {
                       </p>
                       <p className="text-xs text-gray-500">
                         {categoryLabel(product.category)}
+                        {product.subCategoryName
+                          ? ` · ${product.subCategoryName}`
+                          : ""}
                         {variantCount > 0
                           ? ` · ${variantCount} variant${
                               variantCount === 1 ? "" : "s"

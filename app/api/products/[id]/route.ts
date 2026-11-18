@@ -10,6 +10,9 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function requireStaff() {
   const { data: session } = await auth.getSession();
   const user = session?.user;
@@ -101,7 +104,20 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    // Validate optional variants array (same rules as POST)
+    // Optional sub-category
+    const subCategoryIdRaw =
+      typeof body.subCategoryId === "string" ? body.subCategoryId.trim() : "";
+    const subCategoryId =
+      subCategoryIdRaw === "" ? null : subCategoryIdRaw;
+
+    if (subCategoryId !== null && !UUID_RE.test(subCategoryId)) {
+      return NextResponse.json(
+        { error: "The sub-category ID is invalid." },
+        { status: 400 }
+      );
+    }
+
+    // Variants validation (unchanged)
     const variantsInput = Array.isArray(body.variants) ? body.variants : null;
 
     let variants: Array<{ label: string; price: number; available: boolean }> =
@@ -158,21 +174,49 @@ export async function PATCH(request: Request, context: RouteContext) {
       }
     }
 
-    const categories = await sql.query(
-      `SELECT id
-       FROM public.categories
-       WHERE type = $1 AND active = true
-       LIMIT 1`,
-      [category]
-    );
+    // Resolve the effective category_id
+    let categoryRow: { id: string } | undefined;
 
-    const categoryRow = categories[0] as { id: string } | undefined;
-
-    if (!categoryRow) {
-      return NextResponse.json(
-        { error: "The selected category was not found or is inactive." },
-        { status: 400 }
+    if (subCategoryId !== null) {
+      const subRows = await sql.query(
+        `SELECT c.id
+         FROM public.categories c
+         JOIN public.categories parent ON parent.id = c.parent_id
+         WHERE c.id = $1
+           AND c.active = true
+           AND parent.type = $2
+         LIMIT 1`,
+        [subCategoryId, category]
       );
+
+      categoryRow = subRows[0] as { id: string } | undefined;
+
+      if (!categoryRow) {
+        return NextResponse.json(
+          {
+            error:
+              "The selected sub-category does not belong to the chosen category.",
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      const cats = await sql.query(
+        `SELECT id
+         FROM public.categories
+         WHERE type = $1 AND active = true AND parent_id IS NULL
+         LIMIT 1`,
+        [category]
+      );
+
+      categoryRow = cats[0] as { id: string } | undefined;
+
+      if (!categoryRow) {
+        return NextResponse.json(
+          { error: "The selected category was not found or is inactive." },
+          { status: 400 }
+        );
+      }
     }
 
     const updated = await sql.query(
@@ -194,7 +238,6 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    // Replace image only if a new one was uploaded
     if (typeof imageUrl === "string") {
       await sql.query(
         `DELETE FROM public.product_images WHERE product_id = $1`,
@@ -209,8 +252,6 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    // Replace variants only if the client sent a variants array.
-    // (If body.variants is undefined, keep existing variants untouched.)
     if (variantsInput !== null) {
       await sql.query(
         `DELETE FROM public.product_variants WHERE product_id = $1`,
@@ -219,7 +260,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
       if (variants.length > 0) {
         const productIds = variants.map(() => id);
-        const labels = variants.map((v) => v.label);
+        const labelsArr = variants.map((v) => v.label);
         const prices = variants.map((v) => v.price);
         const available = variants.map((v) => v.available ?? true);
         const positions = variants.map((_v, i) => i);
@@ -235,7 +276,7 @@ export async function PATCH(request: Request, context: RouteContext) {
              $4::boolean[],
              $5::integer[]
            ) AS t(p_id, p_label, p_price, p_available, p_position)`,
-          [productIds, labels, prices, available, positions]
+          [productIds, labelsArr, prices, available, positions]
         );
       }
     }

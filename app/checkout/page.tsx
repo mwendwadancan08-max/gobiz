@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 type Variant = {
   id: string;
@@ -160,11 +160,11 @@ export default function CheckoutPage() {
     total: number;
   } | null>(null);
 
-  // Delivery settings from the DB (source of truth)
   const [settings, setSettings] = useState<DeliverySettings | null>(null);
   const [settingsError, setSettingsError] = useState("");
 
-  // Fetch delivery settings on mount
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+
   useEffect(() => {
     let active = true;
 
@@ -186,6 +186,7 @@ export default function CheckoutPage() {
             radiusKm: Number(data.radiusKm),
             feeMode: String(data.feeMode ?? "FREE"),
           });
+          setSettingsError("");
         }
       } catch (err) {
         if (active) {
@@ -204,7 +205,6 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  // Hydrate cart + location from localStorage
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem(CART_KEY);
@@ -248,12 +248,13 @@ export default function CheckoutPage() {
     }
   }, []);
 
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   const subtotal = cart.reduce(
     (total, item) => total + Number(item.unitPrice) * item.quantity,
     0
   );
 
-  // Distance is computed only when both location and settings are ready
   const distance =
     location && settings
       ? distanceKm(location, {
@@ -287,6 +288,7 @@ export default function CheckoutPage() {
         setLocation(coords);
         localStorage.setItem(LOCATION_KEY, JSON.stringify(coords));
         setCheckingLocation(false);
+        setError("");
       },
       () => {
         setCheckingLocation(false);
@@ -357,20 +359,27 @@ export default function CheckoutPage() {
         );
       }
 
-      setConfirmation({
-        orderNumber: String(
-          result.orderNumber ??
-            result.order?.orderNumber ??
-            result.orderId ??
-            result.order?.id ??
-            "Confirmed"
-        ),
-        total: Number(result.total ?? result.order?.total ?? subtotal),
-      });
+      const orderNumber = String(
+        result.orderNumber ??
+          result.order?.orderNumber ??
+          result.orderId ??
+          result.order?.id ??
+          "Confirmed"
+      );
 
-      localStorage.removeItem(CART_KEY);
-      localStorage.removeItem(LOCATION_KEY);
+      const total = Number(result.total ?? result.order?.total ?? subtotal);
+
+      // Clear storage first, then state — prevents a re-render from
+      // re-persisting the cart before removeItem runs.
+      try {
+        localStorage.removeItem(CART_KEY);
+        localStorage.removeItem(LOCATION_KEY);
+      } catch {
+        // ignore
+      }
+
       setCart([]);
+      setConfirmation({ orderNumber, total });
     } catch (err) {
       setError(
         err instanceof Error
@@ -450,23 +459,13 @@ export default function CheckoutPage() {
         <header className="mt-5 overflow-hidden rounded-2xl border border-neutral-200 bg-white sm:mt-6">
           <div className="h-1 bg-gradient-to-r from-green-700 via-neutral-900 to-red-600" />
 
-          <div className="flex flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">
-                Your order, your way
-              </p>
-              <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
-                Checkout with <GoBizLogo />
-              </h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600">
-                Confirm your delivery details and pay when your order arrives.
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2 self-start rounded-full bg-green-50 px-3 py-2 text-xs font-bold text-green-800 sm:self-center">
-              <span className="h-2 w-2 rounded-full bg-green-600" />
-              Fresh choices. Easy ordering.
-            </div>
+          <div className="px-4 py-5 sm:px-6 sm:py-6">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-neutral-500">
+              Your order, your way
+            </p>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              Checkout with <GoBizLogo />
+            </h1>
           </div>
         </header>
 
@@ -499,7 +498,7 @@ export default function CheckoutPage() {
 
               <p className="mt-2 text-sm leading-6 text-neutral-600">
                 {settings
-                  ? `GoBiz delivers within ${settings.radiusKm} km of its service centre. Share your current GPS location to verify your delivery eligibility.`
+                  ? `We deliver within ${settings.radiusKm} km of our service centre.`
                   : "Loading delivery range..."}
               </p>
 
@@ -517,13 +516,13 @@ export default function CheckoutPage() {
                     {!settings
                       ? "Checking delivery range..."
                       : withinRadius
-                        ? "Your GPS location is within the delivery radius."
-                        : "Your GPS location is outside the delivery radius."}
+                        ? "✓ Within delivery range"
+                        : "✗ Outside delivery range"}
                   </p>
 
                   <p className="mt-1 text-sm text-neutral-600">
-                    Distance: {distance?.toFixed(2)} km from the service centre.
-                    {settings ? ` (allowed: ${settings.radiusKm} km)` : ""}
+                    {distance?.toFixed(2)} km away
+                    {settings ? ` · limit ${settings.radiusKm} km` : ""}
                   </p>
 
                   <button
@@ -651,7 +650,7 @@ export default function CheckoutPage() {
                   Cash / payment on delivery
                 </p>
                 <p className="mt-1 text-sm leading-6 text-green-900">
-                  Pay when your order arrives. No online payment is required.
+                  Pay when your order arrives.
                 </p>
               </div>
             </section>
@@ -663,6 +662,18 @@ export default function CheckoutPage() {
               >
                 {error}
               </p>
+            )}
+
+            {/* Subtotal reminder right above confirm */}
+            {cart.length > 0 && (
+              <div className="flex items-baseline justify-between gap-3 rounded-xl bg-neutral-50 px-4 py-3">
+                <span className="text-sm font-semibold text-neutral-600">
+                  Subtotal ({itemCount} item{itemCount === 1 ? "" : "s"})
+                </span>
+                <span className="text-lg font-extrabold">
+                  {formatPrice(subtotal)}
+                </span>
+              </div>
             )}
 
             <button
@@ -680,24 +691,21 @@ export default function CheckoutPage() {
                 ? "Placing your order..."
                 : !settings
                   ? "Loading delivery range..."
-                  : !location
-                    ? "Share location to place order"
-                    : !withinRadius
-                      ? "Outside delivery area"
-                      : "Confirm order"}
+                  : cart.length === 0
+                    ? "Add products to continue"
+                    : !location
+                      ? "Share location to place order"
+                      : !withinRadius
+                        ? "Outside delivery area"
+                        : "Confirm order"}
             </button>
-
-            <p className="text-xs leading-5 text-neutral-500">
-              Your order is only accepted after the server validates your
-              delivery location and order details.
-            </p>
           </form>
 
           <aside className="h-fit min-w-0 rounded-2xl border border-neutral-200 bg-white p-4 sm:rounded-3xl sm:p-6 lg:sticky lg:top-6">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-extrabold sm:text-xl">Your order</h2>
               <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-800">
-                {cart.reduce((count, item) => count + item.quantity, 0)} items
+                {itemCount} item{itemCount === 1 ? "" : "s"}
               </span>
             </div>
 
@@ -714,62 +722,57 @@ export default function CheckoutPage() {
                 </a>
               </div>
             ) : (
-              <div className="mt-5 space-y-4">
-                {cart.map((item) => (
-                  <div
-                    key={`${item.product.id}::${item.variantId ?? "simple"}`}
-                    className="flex justify-between gap-3 border-b border-neutral-100 pb-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="break-words text-sm font-semibold">
-                        {item.product.name}
-                        {item.variantLabel && (
-                          <span className="ml-1 text-xs font-normal text-neutral-500">
-                            ({item.variantLabel})
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        Qty: {item.quantity} × {formatPrice(item.unitPrice)}
-                      </p>
-                    </div>
-
-                    <p className="shrink-0 text-sm font-bold">
-                      {formatPrice(item.unitPrice * item.quantity)}
-                    </p>
+              <>
+                <div className="mt-5 max-h-[40vh] overflow-y-auto pr-1">
+                  <div className="space-y-3">
+                    {cart.map((item) => (
+                      <div
+                        key={`${item.product.id}::${item.variantId ?? "simple"}`}
+                        className="rounded-xl border border-neutral-100 bg-neutral-50/60 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="break-words text-sm font-semibold">
+                              {item.product.name}
+                              {item.variantLabel && (
+                                <span className="ml-1 text-xs font-normal text-neutral-500">
+                                  ({item.variantLabel})
+                                </span>
+                              )}
+                            </p>
+                            <p className="mt-0.5 text-xs text-neutral-500">
+                              {item.quantity} × {formatPrice(item.unitPrice)}
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-sm font-bold">
+                            {formatPrice(item.unitPrice * item.quantity)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-
-                <div className="flex justify-between gap-3 pt-2 text-base font-extrabold sm:text-lg">
-                  <span>Subtotal</span>
-                  <span>{formatPrice(subtotal)}</span>
                 </div>
 
-                <p className="text-xs leading-5 text-neutral-500">
-                  Any applicable delivery fee is confirmed by the checkout
-                  service.
-                </p>
-              </div>
-            )}
+                <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-neutral-100 pt-4">
+                  <span className="text-sm font-semibold text-neutral-600">
+                    Subtotal
+                  </span>
+                  <span className="text-lg font-extrabold">
+                    {formatPrice(subtotal)}
+                  </span>
+                </div>
 
-            <div className="mt-6 border-t border-neutral-100 pt-4">
-              <p className="text-xs leading-5 text-neutral-500">
-                Fresh farm products and ready-made meals, brought closer to
-                you.
-              </p>
-              <p className="mt-2 text-sm font-extrabold">
-                <GoBizLogo />
-                <span className="ml-1 font-medium text-neutral-500">
-                  — Your everyday food market
-                </span>
-              </p>
-            </div>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Delivery fee confirmed by the checkout service.
+                </p>
+              </>
+            )}
           </aside>
         </div>
 
         <footer className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-neutral-200 py-5 sm:flex-row">
           <p className="text-center text-xs text-neutral-500 sm:text-left">
-            © {new Date().getFullYear()} <GoBizLogo />. All rights reserved.
+            © {currentYear} <GoBizLogo />. All rights reserved.
             <span className="mt-1 block text-[11px] text-neutral-400">
               Owned by Gerald Mwai · Managed by the GoBiz team
             </span>

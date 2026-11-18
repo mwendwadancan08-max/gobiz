@@ -17,6 +17,8 @@ type Product = {
   id: number | string;
   name: string;
   category: "READY_MADE" | "FARM";
+  subCategoryId?: string | null;
+  subCategoryName?: string | null;
   price: number;
   description: string;
   imageUrl?: string | null;
@@ -35,6 +37,8 @@ type Coordinates = {
   latitude: number;
   longitude: number;
 };
+
+type SubCategory = "ALL" | "DRINKS" | "SNACKS" | "MEALS";
 
 const contactPages = [
   { label: "About Us", href: "/about" },
@@ -109,7 +113,7 @@ function SearchIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 sm:left-4"
+      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
       aria-hidden="true"
     >
       <circle cx="11" cy="11" r="8" />
@@ -144,6 +148,7 @@ export default function ProductsPage() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
   const [category, setCategory] = useState("ALL");
+  const [subCategory, setSubCategory] = useState<SubCategory>("ALL");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartHydrated, setCartHydrated] = useState(false);
@@ -326,6 +331,14 @@ export default function ProductsPage() {
               id: item.id as number | string,
               name: item.name as string,
               category: item.category as "READY_MADE" | "FARM",
+              subCategoryId:
+                typeof item.subCategoryId === "string"
+                  ? item.subCategoryId
+                  : null,
+              subCategoryName:
+                typeof item.subCategoryName === "string"
+                  ? item.subCategoryName
+                  : null,
               price: Number(item.price),
               description:
                 typeof item.description === "string"
@@ -509,6 +522,12 @@ export default function ProductsPage() {
   function handleSearchChange(value: string) {
     setSearch(value);
     setCategory("ALL");
+    setSubCategory("ALL");
+  }
+
+  function handleCategoryChange(value: string) {
+    setCategory(value);
+    setSubCategory("ALL");
   }
 
   function goToCheckout() {
@@ -548,6 +567,16 @@ export default function ProductsPage() {
     const matchesCategory =
       category === "ALL" || product.category === category;
 
+    let matchesSub = true;
+
+    if (category === "READY_MADE" && subCategory !== "ALL") {
+      const productSubName = (product.subCategoryName ?? "").toUpperCase();
+
+      if (subCategory === "DRINKS") matchesSub = productSubName === "DRINKS";
+      else if (subCategory === "SNACKS") matchesSub = productSubName === "SNACKS";
+      else if (subCategory === "MEALS") matchesSub = productSubName === "MEALS";
+    }
+
     const productText = normalizeSearchText(
       `${product.name} ${product.description}`
     );
@@ -556,7 +585,7 @@ export default function ProductsPage() {
       productText.includes(term)
     );
 
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesSub && matchesSearch;
   });
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -566,74 +595,93 @@ export default function ProductsPage() {
     0
   );
 
+  const subCategoryLabels: Record<SubCategory, string> = {
+    ALL: "All",
+    DRINKS: "Drinks",
+    SNACKS: "Snacks",
+    MEALS: "Meals",
+  };
+
+  const headingText =
+    category === "ALL"
+      ? "Everything in one place"
+      : category === "FARM"
+        ? "Fresh farm products"
+        : subCategory === "ALL"
+          ? "Ready-made meals"
+          : `Ready-made · ${subCategoryLabels[subCategory]}`;
+
   return (
     <>
       <main className="products-shell relative flex min-h-screen flex-col overflow-hidden bg-white text-neutral-900">
-        {/* Floating food bubbles — 8 drifting across page */}
         <ProductsFloatingFoods foods={floatingFoodImages} />
 
-        {/* HEADER */}
-        <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/85 backdrop-blur-xl">
-          <div className="relative mx-auto flex max-w-7xl items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
-            <Link href="/" className="shrink-0">
-              <span className="text-xl font-extrabold tracking-tight sm:text-3xl">
-                <span className="text-green-700">Go</span>
-                <span className="text-red-700">Biz</span>
-              </span>
-            </Link>
+        {/* FIXED HEADER — never moves, always visible */}
+        <header className="products-floating-header fixed inset-x-0 top-0 z-40">
+          <div className="mx-auto max-w-7xl px-3 pt-3 sm:px-6 sm:pt-4">
+            <div className="rounded-2xl border border-neutral-200/80 bg-white/95 px-3 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:rounded-3xl sm:px-5 sm:py-3">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <Link href="/" className="shrink-0">
+                  <span className="text-xl font-extrabold tracking-tight sm:text-2xl">
+                    <span className="text-green-700">Go</span>
+                    <span className="text-red-700">Biz</span>
+                  </span>
+                </Link>
 
-            <div className="hidden flex-1 sm:block">
-              <div className="relative mx-auto max-w-md">
-                <SearchIcon />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) =>
-                    handleSearchChange(event.target.value)
-                  }
-                  placeholder="Search meals and farm products..."
-                  aria-label="Search products"
-                  className="w-full rounded-full border border-neutral-300 bg-white/70 py-2.5 pl-11 pr-4 text-sm outline-none backdrop-blur-sm transition focus:border-green-700 focus:bg-white"
-                />
+                <div className="hidden flex-1 sm:block">
+                  <div className="relative mx-auto max-w-md">
+                    <SearchIcon />
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(event) =>
+                        handleSearchChange(event.target.value)
+                      }
+                      placeholder="Search meals and farm products..."
+                      aria-label="Search products"
+                      className="w-full rounded-full border border-neutral-300 bg-neutral-50 py-2 pl-10 pr-4 text-sm outline-none transition focus:border-green-700 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setCartOpen(true)}
+                  aria-label="Open cart"
+                  className="products-cart-btn ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-green-800 py-2 pl-3 pr-1.5 text-xs font-semibold text-white sm:gap-2.5 sm:py-2.5 sm:pl-5 sm:pr-2.5 sm:text-sm"
+                >
+                  <CartIcon />
+                  <span className="hidden sm:inline">Cart</span>
+                  <span className="flex min-w-5 items-center justify-center rounded-full bg-white px-1 py-0.5 text-[10px] font-extrabold text-green-900 sm:min-w-6 sm:px-1.5 sm:text-[11px]">
+                    {cartCount}
+                  </span>
+                </button>
               </div>
-            </div>
 
-            <button
-              onClick={() => setCartOpen(true)}
-              aria-label="Open cart"
-              className="products-cart-btn ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-green-800 py-2 pl-3 pr-1.5 text-xs font-semibold text-white sm:gap-2.5 sm:py-2.5 sm:pl-5 sm:pr-2.5 sm:text-sm"
-            >
-              <CartIcon />
-              <span className="hidden sm:inline">Cart</span>
-              <span className="flex min-w-5 items-center justify-center rounded-full bg-white px-1 py-0.5 text-[10px] font-extrabold text-green-900 sm:min-w-6 sm:px-1.5 sm:text-[11px]">
-                {cartCount}
-              </span>
-            </button>
-          </div>
-
-          <div className="px-3 pb-2.5 sm:hidden">
-            <div className="relative">
-              <SearchIcon />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) =>
-                  handleSearchChange(event.target.value)
-                }
-                placeholder="Search meals and farm products..."
-                aria-label="Search products"
-                className="w-full rounded-full border border-neutral-300 bg-white/70 py-2 pl-10 pr-3 text-xs outline-none backdrop-blur-sm focus:border-green-700 focus:bg-white"
-              />
+              {/* Mobile search — inside fixed card so it's always visible */}
+              <div className="mt-2 sm:hidden">
+                <div className="relative">
+                  <SearchIcon />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(event) =>
+                      handleSearchChange(event.target.value)
+                    }
+                    placeholder="Search meals and farm products..."
+                    aria-label="Search products"
+                    className="w-full rounded-full border border-neutral-300 bg-neutral-50 py-2 pl-10 pr-3 text-xs outline-none focus:border-green-700 focus:bg-white"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* HERO — matches welcome page (left-aligned, dark green, big wordmark) */}
+        {/* Spacer so content starts below the fixed header */}
+        <div aria-hidden="true" className="h-[72px] sm:h-[88px]" />
+
         <section className="products-hero relative overflow-hidden">
-          <div
-            aria-hidden="true"
-            className="products-hero-bg absolute inset-0"
-          />
+          <div aria-hidden="true" className="products-hero-bg absolute inset-0" />
 
           <div
             aria-hidden="true"
@@ -669,7 +717,6 @@ export default function ProductsPage() {
           </div>
         </section>
 
-        {/* PRODUCTS GRID */}
         <section className="relative z-10 mx-auto w-full max-w-7xl flex-1 px-3 py-6 sm:px-6 sm:py-12">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end sm:gap-4">
             <div>
@@ -677,11 +724,7 @@ export default function ProductsPage() {
                 Find what you need
               </p>
               <h2 className="mt-1.5 text-xl font-extrabold tracking-tight sm:mt-2 sm:text-3xl">
-                {category === "ALL"
-                  ? "Everything in one place"
-                  : category === "READY_MADE"
-                    ? "Ready-made meals"
-                    : "Fresh farm products"}
+                {headingText}
               </h2>
             </div>
 
@@ -693,7 +736,7 @@ export default function ProductsPage() {
               ].map((item) => (
                 <button
                   key={item.value}
-                  onClick={() => setCategory(item.value)}
+                  onClick={() => handleCategoryChange(item.value)}
                   className={`rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition sm:px-4 sm:py-2 sm:text-sm ${
                     category === item.value
                       ? "border-green-800 bg-green-800 text-white shadow-lg shadow-green-900/20"
@@ -705,6 +748,31 @@ export default function ProductsPage() {
               ))}
             </div>
           </div>
+
+          {category === "READY_MADE" && (
+            <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2">
+              {(
+                [
+                  { label: "All", value: "ALL" as SubCategory },
+                  { label: "Drinks", value: "DRINKS" as SubCategory },
+                  { label: "Snacks", value: "SNACKS" as SubCategory },
+                  { label: "Meals", value: "MEALS" as SubCategory },
+                ]
+              ).map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => setSubCategory(item.value)}
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition sm:px-3.5 sm:py-1.5 sm:text-xs ${
+                    subCategory === item.value
+                      ? "border-green-900 bg-green-900 text-white shadow-sm"
+                      : "border-green-200 bg-green-50/70 text-green-900 hover:border-green-400 hover:bg-green-50"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {productsLoading ? (
             <div className="mt-6 rounded-2xl border border-neutral-200 bg-white/80 px-5 py-12 text-center backdrop-blur-sm">
@@ -795,7 +863,9 @@ export default function ProductsPage() {
                               : "bg-green-700/90"
                           }`}
                         >
-                          {product.category === "FARM" ? "Farm" : "Meal"}
+                          {product.category === "FARM"
+                            ? "Farm"
+                            : product.subCategoryName ?? "Meal"}
                         </span>
                       </div>
 
@@ -921,18 +991,23 @@ export default function ProductsPage() {
                   <h3 className="text-sm font-bold sm:text-base">
                     {products.length === 0
                       ? "No products available yet"
-                      : "No matching products"}
+                      : category === "READY_MADE" && subCategory !== "ALL"
+                        ? `No ${subCategoryLabels[subCategory]} yet`
+                        : "No matching products"}
                   </h3>
                   <p className="mt-2 text-xs text-neutral-500 sm:text-sm">
                     {products.length === 0
                       ? "Products added to the GoBiz catalogue will appear here."
-                      : "Try another search or choose a different category."}
+                      : category === "READY_MADE" && subCategory !== "ALL"
+                        ? `We haven't added any ${subCategoryLabels[subCategory].toLowerCase()} yet. Try another sub-category.`
+                        : "Try another search or choose a different category."}
                   </p>
                   {products.length > 0 && (
                     <button
                       onClick={() => {
                         setSearch("");
                         setCategory("ALL");
+                        setSubCategory("ALL");
                       }}
                       className="mt-4 rounded-full bg-green-800 px-5 py-2.5 text-xs font-semibold text-white sm:text-sm"
                     >
@@ -945,7 +1020,6 @@ export default function ProductsPage() {
           )}
         </section>
 
-        {/* FOOTER */}
         <footer className="relative z-10 mt-auto bg-neutral-950 text-white">
           <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-3 sm:gap-8 sm:px-6 sm:py-12">
             <div>
